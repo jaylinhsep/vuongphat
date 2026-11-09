@@ -25,14 +25,17 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
+  // getSession() giải mã JWT cục bộ (không gọi mạng) trừ khi token hết hạn cần
+  // refresh. Việc xác thực có thẩm quyền (getUser) vẫn chạy ở tầng render/handler
+  // qua getCurrentUser(), nên middleware chỉ cần kiểm tra phiên để quyết định redirect.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
   const pathname = request.nextUrl.pathname;
   const isLogin = pathname === "/login";
 
-  if (!user && !isLogin) {
+  if (!session && !isLogin) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
@@ -42,7 +45,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isLogin) {
+  if (session && isLogin) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";

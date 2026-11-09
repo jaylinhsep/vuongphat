@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DEMO_ROLE_COOKIE, isSupabaseConfigured } from "@/lib/config";
@@ -7,7 +8,7 @@ import { ROLES, type AppUser, type Role } from "@/lib/types";
 
 const DEFAULT_DEMO_ROLE: Role = "admin";
 
-export async function getCurrentUser(): Promise<AppUser | null> {
+export const getCurrentUser = cache(async (): Promise<AppUser | null> => {
   if (!isSupabaseConfigured()) {
     const cookieStore = await cookies();
     const raw = cookieStore.get(DEMO_ROLE_COOKIE)?.value as Role | undefined;
@@ -43,7 +44,7 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     role: ROLES.includes(role) ? role : "kho",
     isDemo: false,
   };
-}
+});
 
 export async function requireUser(): Promise<AppUser> {
   const user = await getCurrentUser();
