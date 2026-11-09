@@ -103,5 +103,6 @@ sql/schema.sql          # Toàn bộ migration Supabase
 
 - Không có service role key trong ứng dụng; mọi thao tác ghi đều qua RLS/RPC với
   phiên đăng nhập của người dùng.
-- `sql/schema.sql` chưa được chạy thử trên dự án Supabase thật — hãy chạy trên một dự án
-  staging trước khi đưa vào sử dụng chính thức.
+- `sql/schema.sql` đã được chạy thành công trên dự án Supabase thật ngày 2026-11-09
+  (8 bảng, 3 RPC, RLS đầy đủ). Khi nâng cấp schema, chạy lại file này: các câu lệnh
+  đều idempotent (`create if not exists`, `drop ... if exists` trước khi tạo lại).
