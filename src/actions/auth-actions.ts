@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { DEMO_ROLE_COOKIE, isSupabaseConfigured } from "@/lib/config";
+import { DEMO_ROLE_COOKIE, DEFAULT_LOGIN_DOMAIN, isSupabaseConfigured } from "@/lib/config";
 import { getCurrentUser } from "@/lib/auth";
 import { HOME_PATH } from "@/lib/labels";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -18,11 +18,14 @@ export async function signInAction(
     redirect("/");
   }
 
-  const email = String(formData.get("email") ?? "").trim();
+  const identifier = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const email = identifier.includes("@")
+    ? identifier
+    : `${identifier}@${DEFAULT_LOGIN_DOMAIN}`;
 
-  if (!email || !password) {
-    return { status: "error", message: "Vui lòng nhập email và mật khẩu." };
+  if (!identifier || !password) {
+    return { status: "error", message: "Vui lòng nhập tài khoản và mật khẩu." };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -33,7 +36,7 @@ export async function signInAction(
       status: "error",
       message:
         error.message === "Invalid login credentials"
-          ? "Email hoặc mật khẩu không đúng."
+          ? "Tài khoản hoặc mật khẩu không đúng."
           : error.message,
     };
   }
