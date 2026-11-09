@@ -1,0 +1,581 @@
+-- ============================================================================
+-- Vương Phát ERP — Supabase schema
+-- Chạy toàn bộ file này trong Supabase SQL Editor (một lần).
+-- ============================================================================
+
+create extension if not exists pgcrypto;
+
+-- ---------------------------------------------------------------------------
+-- 1. Kiểu dữ liệu
+-- ---------------------------------------------------------------------------
+do $$ begin
+  create type public.user_role as enum ('admin', 'kho', 'san_xuat', 'ke_toan');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type public.item_type as enum ('nguyen_lieu', 'thanh_pham');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type public.movement_type as enum
+    ('nhap', 'xuat', 'dieu_chinh', 'san_xuat_tieu_hao', 'san_xuat_nhap');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type public.production_status as enum ('cho_xac_nhan', 'hoan_thanh', 'huy');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type public.cash_type as enum ('thu', 'chi');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type public.payment_method as enum ('tien_mat', 'ngan_hang');
+exception when duplicate_object then null; end $$;
+
+-- ---------------------------------------------------------------------------
+-- 2. Hồ sơ người dùng + phân quyền
+-- ---------------------------------------------------------------------------
+create table if not exists public.profiles (
+  id uuid primary key references auth.users (id) on delete cascade,
+  full_name text not null default '',
+  role public.user_role not null default 'kho',
+  created_at timestamptz not null default now()
+);
+
+alter table public.profiles enable row level security;
+
+-- Đọc role của chính mình; security definer để tránh đệ quy RLS.
+create or replace function public.my_role()
+returns public.user_role
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select role from public.profiles where id = auth.uid();
+$$;
+
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(public.my_role() = 'admin', false);
+$$;
+
+drop policy if exists "profiles_select" on public.profiles;
+create policy "profiles_select" on public.profiles
+  for select to authenticated
+  using (id = auth.uid() or public.is_admin());
+
+drop policy if exists "profiles_update_admin" on public.profiles;
+create policy "profiles_update_admin" on public.profiles
+  for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+-- Tự tạo hồ sơ khi có user mới (mặc định vai trò "kho").
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, full_name)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data ->> 'full_name', split_part(new.email, '@', 1))
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- ---------------------------------------------------------------------------
+-- 3. Danh mục
+-- ---------------------------------------------------------------------------
+create table if not exists public.suppliers (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  phone text,
+  note text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.items (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  name text not null,
+  unit text not null,
+  type public.item_type not null,
+  unit_price numeric(14, 2) not null default 0 check (unit_price >= 0),
+  min_stock numeric(14, 3) not null default 0 check (min_stock >= 0),
+  created_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- 4. Kho: phiếu nhập / xuất / điều chỉnh
+--    quantity là số CÓ DẤU: nhập > 0, xuất < 0.
+-- ---------------------------------------------------------------------------
+create table if not exists public.stock_movements (
+  id uuid primary key default gen_random_uuid(),
+  item_id uuid not null references public.items (id) on delete restrict,
+  type public.movement_type not null,
+  quantity numeric(14, 3) not null check (quantity <> 0),
+  unit_price numeric(14, 2) not null default 0 check (unit_price >= 0),
+  supplier_id uuid references public.suppliers (id) on delete set null,
+  note text,
+  reference_type text,
+  reference_id uuid,
+  created_by uuid references public.profiles (id) on delete set null default auth.uid(),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists stock_movements_item_idx
+  on public.stock_movements (item_id, created_at desc);
+
+-- Tồn kho hiện tại = tổng đại số các phiếu.
+create or replace view public.item_stock
+with (security_invoker = true) as
+select
+  i.id,
+  i.code,
+  i.name,
+  i.unit,
+  i.type,
+  i.unit_price,
+  i.min_stock,
+  i.created_at,
+  coalesce(sum(m.quantity), 0)::numeric(14, 3) as on_hand
+from public.items i
+left join public.stock_movements m on m.item_id = i.id
+group by i.id;
+
+-- ---------------------------------------------------------------------------
+-- 5. Công thức định lượng (BOM) + lệnh sản xuất
+-- ---------------------------------------------------------------------------
+create table if not exists public.boms (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null unique references public.items (id) on delete cascade,
+  output_quantity numeric(14, 3) not null default 1 check (output_quantity > 0),
+  note text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.bom_items (
+  id uuid primary key default gen_random_uuid(),
+  bom_id uuid not null references public.boms (id) on delete cascade,
+  material_id uuid not null references public.items (id) on delete restrict,
+  quantity numeric(14, 3) not null check (quantity > 0),
+  unique (bom_id, material_id)
+);
+
+create table if not exists public.production_orders (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique default (
+    'LSX-' || to_char(now(), 'YYMMDD') || '-' ||
+    upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6))
+  ),
+  product_id uuid not null references public.items (id) on delete restrict,
+  quantity numeric(14, 3) not null check (quantity > 0),
+  status public.production_status not null default 'cho_xac_nhan',
+  planned_date date not null default current_date,
+  completed_at timestamptz,
+  note text,
+  created_by uuid references public.profiles (id) on delete set null default auth.uid(),
+  created_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- 6. Kế toán: sổ quỹ thu / chi
+-- ---------------------------------------------------------------------------
+create table if not exists public.cash_transactions (
+  id uuid primary key default gen_random_uuid(),
+  type public.cash_type not null,
+  amount numeric(14, 2) not null check (amount > 0),
+  method public.payment_method not null default 'tien_mat',
+  category text not null default 'Khác',
+  description text,
+  transaction_date date not null default current_date,
+  reference_type text,
+  reference_id uuid,
+  created_by uuid references public.profiles (id) on delete set null default auth.uid(),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists cash_transactions_date_idx
+  on public.cash_transactions (transaction_date desc);
+
+create or replace view public.cash_balance
+with (security_invoker = true) as
+select coalesce(sum(
+  case when type = 'thu' then amount else -amount end
+), 0)::numeric(14, 2) as balance
+from public.cash_transactions;
+
+-- ---------------------------------------------------------------------------
+-- 7. RLS
+-- ---------------------------------------------------------------------------
+alter table public.suppliers enable row level security;
+alter table public.items enable row level security;
+alter table public.stock_movements enable row level security;
+alter table public.boms enable row level security;
+alter table public.bom_items enable row level security;
+alter table public.production_orders enable row level security;
+alter table public.cash_transactions enable row level security;
+
+-- Nhà cung cấp
+drop policy if exists "suppliers_select" on public.suppliers;
+create policy "suppliers_select" on public.suppliers
+  for select to authenticated using (true);
+
+drop policy if exists "suppliers_write" on public.suppliers;
+create policy "suppliers_write" on public.suppliers
+  for all to authenticated
+  using (public.my_role() in ('admin', 'kho'))
+  with check (public.my_role() in ('admin', 'kho'));
+
+-- Hàng hóa
+drop policy if exists "items_select" on public.items;
+create policy "items_select" on public.items
+  for select to authenticated using (true);
+
+drop policy if exists "items_write" on public.items;
+create policy "items_write" on public.items
+  for all to authenticated
+  using (public.my_role() in ('admin', 'kho'))
+  with check (public.my_role() in ('admin', 'kho'));
+
+-- Phiếu kho: chỉ đọc trực tiếp, ghi qua RPC (kiểm tra tồn kho + quyền).
+drop policy if exists "stock_movements_select" on public.stock_movements;
+create policy "stock_movements_select" on public.stock_movements
+  for select to authenticated using (true);
+
+-- BOM
+drop policy if exists "boms_select" on public.boms;
+create policy "boms_select" on public.boms
+  for select to authenticated using (true);
+
+drop policy if exists "bom_items_select" on public.bom_items;
+create policy "bom_items_select" on public.bom_items
+  for select to authenticated using (true);
+
+-- Lệnh sản xuất
+drop policy if exists "production_orders_select" on public.production_orders;
+create policy "production_orders_select" on public.production_orders
+  for select to authenticated using (true);
+
+drop policy if exists "production_orders_insert" on public.production_orders;
+create policy "production_orders_insert" on public.production_orders
+  for insert to authenticated
+  with check (public.my_role() in ('admin', 'san_xuat'));
+
+drop policy if exists "production_orders_update" on public.production_orders;
+create policy "production_orders_update" on public.production_orders
+  for update to authenticated
+  using (public.my_role() in ('admin', 'san_xuat'))
+  with check (public.my_role() in ('admin', 'san_xuat'));
+
+drop policy if exists "production_orders_delete" on public.production_orders;
+create policy "production_orders_delete" on public.production_orders
+  for delete to authenticated
+  using (public.my_role() in ('admin', 'san_xuat'));
+
+-- Sổ quỹ: chỉ Admin và Kế toán
+drop policy if exists "cash_select" on public.cash_transactions;
+create policy "cash_select" on public.cash_transactions
+  for select to authenticated
+  using (public.my_role() in ('admin', 'ke_toan'));
+
+drop policy if exists "cash_insert" on public.cash_transactions;
+create policy "cash_insert" on public.cash_transactions
+  for insert to authenticated
+  with check (public.my_role() in ('admin', 'ke_toan'));
+
+drop policy if exists "cash_update" on public.cash_transactions;
+create policy "cash_update" on public.cash_transactions
+  for update to authenticated
+  using (public.my_role() in ('admin', 'ke_toan'))
+  with check (public.my_role() in ('admin', 'ke_toan'));
+
+drop policy if exists "cash_delete" on public.cash_transactions;
+create policy "cash_delete" on public.cash_transactions
+  for delete to authenticated
+  using (public.is_admin());
+
+-- ---------------------------------------------------------------------------
+-- 8. RPC nghiệp vụ
+-- ---------------------------------------------------------------------------
+
+-- Tạo phiếu nhập / xuất / điều chỉnh kho.
+-- p_quantity: nhập & xuất truyền số dương; điều chỉnh truyền số có dấu.
+create or replace function public.create_stock_movement(
+  p_item_id uuid,
+  p_type public.movement_type,
+  p_quantity numeric,
+  p_unit_price numeric default 0,
+  p_supplier_id uuid default null,
+  p_note text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_qty numeric;
+  v_on_hand numeric;
+  v_movement_id uuid;
+begin
+  if public.my_role() not in ('admin', 'kho') then
+    raise exception 'Bạn không có quyền thực hiện thao tác kho';
+  end if;
+
+  if p_type not in ('nhap', 'xuat', 'dieu_chinh') then
+    raise exception 'Loại phiếu kho không hợp lệ';
+  end if;
+
+  -- Khóa dòng hàng hóa để tránh ghi đè tồn kho đồng thời.
+  perform 1 from public.items where id = p_item_id for update;
+  if not found then
+    raise exception 'Không tìm thấy hàng hóa';
+  end if;
+
+  if p_quantity is null or p_quantity = 0 then
+    raise exception 'Số lượng phải khác 0';
+  end if;
+
+  v_qty := case
+    when p_type = 'nhap' then abs(p_quantity)
+    when p_type = 'xuat' then -abs(p_quantity)
+    else p_quantity
+  end;
+
+  select coalesce(sum(quantity), 0) into v_on_hand
+  from public.stock_movements where item_id = p_item_id;
+
+  if v_qty < 0 and v_on_hand + v_qty < 0 then
+    raise exception 'Tồn kho không đủ (hiện còn %)', v_on_hand;
+  end if;
+
+  insert into public.stock_movements
+    (item_id, type, quantity, unit_price, supplier_id, note, created_by)
+  values
+    (p_item_id, p_type, v_qty, coalesce(p_unit_price, 0), p_supplier_id, p_note, auth.uid())
+  returning id into v_movement_id;
+
+  return v_movement_id;
+end;
+$$;
+
+-- Lưu công thức định lượng (tạo mới hoặc ghi đè theo thành phẩm).
+-- p_items: [{"material_id": "...", "quantity": 0.5}, ...]
+create or replace function public.save_bom(
+  p_product_id uuid,
+  p_output_quantity numeric,
+  p_note text,
+  p_items jsonb
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_bom_id uuid;
+  v_count integer;
+  v_duplicates integer;
+begin
+  if public.my_role() not in ('admin', 'san_xuat') then
+    raise exception 'Bạn không có quyền thiết lập công thức';
+  end if;
+
+  if not exists (
+    select 1 from public.items where id = p_product_id and type = 'thanh_pham'
+  ) then
+    raise exception 'Thành phẩm không hợp lệ';
+  end if;
+
+  if p_output_quantity is null or p_output_quantity <= 0 then
+    raise exception 'Số lượng đầu ra phải lớn hơn 0';
+  end if;
+
+  select count(*) into v_count
+  from jsonb_array_elements(coalesce(p_items, '[]'::jsonb));
+
+  if v_count = 0 then
+    raise exception 'Công thức phải có ít nhất một nguyên liệu';
+  end if;
+
+  select count(*) into v_duplicates
+  from (
+    select value ->> 'material_id' as material_id
+    from jsonb_array_elements(p_items)
+    group by 1
+    having count(*) > 1
+  ) d;
+
+  if v_duplicates > 0 then
+    raise exception 'Nguyên liệu bị lặp trong công thức';
+  end if;
+
+  if exists (
+    select 1
+    from jsonb_array_elements(p_items) e
+    where not exists (
+      select 1 from public.items i
+      where i.id = (e ->> 'material_id')::uuid and i.type = 'nguyen_lieu'
+    )
+    or coalesce((e ->> 'quantity')::numeric, 0) <= 0
+  ) then
+    raise exception 'Nguyên liệu hoặc định lượng không hợp lệ';
+  end if;
+
+  insert into public.boms (product_id, output_quantity, note, updated_at)
+  values (p_product_id, p_output_quantity, p_note, now())
+  on conflict (product_id) do update
+    set output_quantity = excluded.output_quantity,
+        note = excluded.note,
+        updated_at = now()
+  returning id into v_bom_id;
+
+  delete from public.bom_items where bom_id = v_bom_id;
+
+  insert into public.bom_items (bom_id, material_id, quantity)
+  select v_bom_id, (e ->> 'material_id')::uuid, (e ->> 'quantity')::numeric
+  from jsonb_array_elements(p_items) e;
+
+  return v_bom_id;
+end;
+$$;
+
+-- Xác nhận hoàn thành lệnh sản xuất: kiểm tra & trừ nguyên liệu, nhập thành phẩm.
+create or replace function public.confirm_production(p_order_id uuid)
+returns numeric
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_order public.production_orders;
+  v_bom public.boms;
+  v_line record;
+  v_on_hand numeric;
+  v_total_cost numeric := 0;
+  v_unit_cost numeric := 0;
+begin
+  if public.my_role() not in ('admin', 'san_xuat') then
+    raise exception 'Bạn không có quyền xác nhận sản xuất';
+  end if;
+
+  select * into v_order
+  from public.production_orders where id = p_order_id for update;
+
+  if not found then
+    raise exception 'Không tìm thấy lệnh sản xuất';
+  end if;
+
+  if v_order.status <> 'cho_xac_nhan' then
+    raise exception 'Lệnh sản xuất đã được xử lý';
+  end if;
+
+  select * into v_bom from public.boms where product_id = v_order.product_id;
+  if not found then
+    raise exception 'Thành phẩm chưa có công thức định lượng (BOM)';
+  end if;
+
+  if not exists (select 1 from public.bom_items where bom_id = v_bom.id) then
+    raise exception 'Công thức định lượng đang rỗng';
+  end if;
+
+  -- Khóa toàn bộ hàng hóa liên quan theo thứ tự id để tránh deadlock.
+  perform 1 from public.items
+  where id in (
+    select material_id from public.bom_items where bom_id = v_bom.id
+    union
+    select v_order.product_id
+  )
+  order by id
+  for update;
+
+  for v_line in
+    select bi.material_id,
+           i.name,
+           bi.quantity * v_order.quantity / v_bom.output_quantity as needed
+    from public.bom_items bi
+    join public.items i on i.id = bi.material_id
+    where bi.bom_id = v_bom.id
+  loop
+    select coalesce(sum(quantity), 0) into v_on_hand
+    from public.stock_movements where item_id = v_line.material_id;
+
+    if v_on_hand < v_line.needed then
+      raise exception 'Nguyên liệu "%" không đủ: cần %, chỉ còn %',
+        v_line.name, v_line.needed, v_on_hand;
+    end if;
+  end loop;
+
+  select coalesce(sum(
+    bi.quantity * v_order.quantity / v_bom.output_quantity * i.unit_price
+  ), 0)
+  into v_total_cost
+  from public.bom_items bi
+  join public.items i on i.id = bi.material_id
+  where bi.bom_id = v_bom.id;
+
+  insert into public.stock_movements
+    (item_id, type, quantity, unit_price, note, reference_type, reference_id, created_by)
+  select bi.material_id,
+         'san_xuat_tieu_hao',
+         -(bi.quantity * v_order.quantity / v_bom.output_quantity),
+         i.unit_price,
+         'Xuất nguyên liệu cho lệnh ' || v_order.code,
+         'production_order',
+         v_order.id,
+         auth.uid()
+  from public.bom_items bi
+  join public.items i on i.id = bi.material_id
+  where bi.bom_id = v_bom.id;
+
+  if v_order.quantity > 0 then
+    v_unit_cost := round(v_total_cost / v_order.quantity, 2);
+  end if;
+
+  insert into public.stock_movements
+    (item_id, type, quantity, unit_price, note, reference_type, reference_id, created_by)
+  values
+    (v_order.product_id, 'san_xuat_nhap', v_order.quantity, v_unit_cost,
+     'Nhập thành phẩm từ lệnh ' || v_order.code,
+     'production_order', v_order.id, auth.uid());
+
+  update public.production_orders
+  set status = 'hoan_thanh', completed_at = now()
+  where id = p_order_id;
+
+  return v_total_cost;
+end;
+$$;
+
+grant execute on function public.create_stock_movement(
+  uuid, public.movement_type, numeric, numeric, uuid, text
+) to authenticated;
+
+grant execute on function public.save_bom(uuid, numeric, text, jsonb) to authenticated;
+grant execute on function public.confirm_production(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 9. Ghi chú vận hành
+-- ---------------------------------------------------------------------------
+-- Sau khi tạo user trong Authentication > Users, cấp quyền Admin bằng:
+--   update public.profiles set role = 'admin' where id = '<UUID user>';
+-- Các vai trò hợp lệ: admin | kho | san_xuat | ke_toan
