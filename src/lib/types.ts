@@ -154,3 +154,84 @@ export type AppUser = {
   role: Role;
   isDemo: boolean;
 };
+
+export type TaskStatus = "can_lam" | "hoan_thanh";
+
+export type Employee = {
+  id: string;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  job_title: string | null;
+  date_of_birth: string | null;
+  start_date: string | null;
+  daily_wage: number;
+  active: boolean;
+  role: Role;
+  created_at: string;
+};
+
+export type Task = {
+  id: string;
+  employee_id: string;
+  title: string;
+  description: string | null;
+  due_date: string;
+  status: TaskStatus;
+  completed_at: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type TaskRow = Task & {
+  employee_name: string;
+  created_by_name: string | null;
+};
+
+export type Attendance = {
+  id: string;
+  employee_id: string;
+  work_date: string;
+  days: number;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type AttendanceRow = Attendance & {
+  employee_name: string;
+};
+
+export type AttendanceSummary = {
+  employee_id: string;
+  full_name: string;
+  job_title: string | null;
+  total_days: number;
+};
+
+export type PayrollAdjustment = {
+  id: string;
+  employee_id: string;
+  period: string;
+  amount: number;
+  description: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type PayrollAdjustmentRow = PayrollAdjustment & {
+  employee_name: string;
+};
+
+export type PayrollRow = {
+  employee_id: string;
+  full_name: string;
+  job_title: string | null;
+  role: Role;
+  total_days: number;
+  daily_wage: number;
+  base_salary: number;
+  adjustments: number;
+  net_salary: number;
+};

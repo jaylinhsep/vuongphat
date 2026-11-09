@@ -9,21 +9,27 @@ import {
   demoOrders,
   demoSuppliers,
 } from "@/lib/demo/store";
-import { lastMonths, monthKey, startOfMonthISO, todayISO } from "@/lib/format";
+import { lastMonths, monthKey, periodBounds, startOfMonthISO, todayISO } from "@/lib/format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
+  AttendanceRow,
+  AttendanceSummary,
   BomLine,
   BomRow,
   CashFilter,
   CashRow,
   DashboardData,
+  Employee,
   InventoryItem,
   Item,
   ItemType,
   MovementRow,
+  PayrollAdjustmentRow,
+  PayrollRow,
   ProductionRow,
   StockMovement,
   Supplier,
+  TaskRow,
 } from "@/lib/types";
 
 const num = (value: unknown): number => {
@@ -327,4 +333,187 @@ export async function getDashboardData(): Promise<DashboardData> {
     lowStockCount,
     monthly: Array.from(monthlyMap.values()),
   };
+}
+
+// --- Nhân sự ---------------------------------------------------------------
+// Phân hệ nhân sự cần Supabase thật (Admin API cho tài khoản). Ở chế độ demo
+// (chưa cấu hình Supabase) các truy vấn trả về danh sách rỗng để trang hiển thị
+// trạng thái trống.
+
+type DbEmployee = Omit<Employee, "daily_wage"> & {
+  daily_wage: number | string;
+};
+
+export async function getEmployees(): Promise<Employee[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .order("full_name");
+
+  if (error) throw new Error(error.message);
+
+  return ((data ?? []) as unknown as DbEmployee[]).map((row) => ({
+    ...row,
+    daily_wage: num(row.daily_wage),
+  }));
+}
+
+type DbTask = TaskRow & {
+  employee: { full_name: string } | null;
+  creator: { full_name: string } | null;
+};
+
+export async function getTasks(employeeId?: string): Promise<TaskRow[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createSupabaseServerClient();
+  let query = supabase
+    .from("tasks")
+    .select(
+      "*, employee:profiles!tasks_employee_id_fkey(full_name), creator:profiles!tasks_created_by_fkey(full_name)",
+    )
+    .order("due_date", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (employeeId) query = query.eq("employee_id", employeeId);
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  return ((data ?? []) as unknown as DbTask[]).map((row) => ({
+    ...row,
+    employee_name: row.employee?.full_name ?? "—",
+    created_by_name: row.creator?.full_name ?? null,
+  }));
+}
+
+type DbAttendance = AttendanceRow & {
+  employee: { full_name: string } | null;
+};
+
+export async function getAttendance(period?: string): Promise<AttendanceRow[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createSupabaseServerClient();
+  let query = supabase
+    .from("attendance")
+    .select("*, employee:profiles!attendance_employee_id_fkey(full_name)")
+    .order("work_date", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (period) {
+    const { from, to } = periodBounds(period);
+    query = query.gte("work_date", from).lte("work_date", to);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  return ((data ?? []) as unknown as DbAttendance[]).map((row) => ({
+    ...row,
+    days: num(row.days),
+    employee_name: row.employee?.full_name ?? "—",
+  }));
+}
+
+export async function getAttendanceSummary(
+  period: string,
+): Promise<AttendanceSummary[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createSupabaseServerClient();
+  const { from, to } = periodBounds(period);
+  const { data, error } = await supabase
+    .from("attendance")
+    .select(
+      "employee_id, days, employee:profiles!attendance_employee_id_fkey(full_name, job_title)",
+    )
+    .gte("work_date", from)
+    .lte("work_date", to);
+
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? []) as unknown as Array<{
+    employee_id: string;
+    days: number | string;
+    employee: { full_name: string; job_title: string | null } | null;
+  }>;
+
+  const map = new Map<string, AttendanceSummary>();
+  for (const row of rows) {
+    const existing = map.get(row.employee_id);
+    if (existing) {
+      existing.total_days += num(row.days);
+    } else {
+      map.set(row.employee_id, {
+        employee_id: row.employee_id,
+        full_name: row.employee?.full_name ?? "—",
+        job_title: row.employee?.job_title ?? null,
+        total_days: num(row.days),
+      });
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) =>
+    a.full_name.localeCompare(b.full_name, "vi"),
+  );
+}
+
+type DbPayroll = Omit<
+  PayrollRow,
+  "total_days" | "daily_wage" | "base_salary" | "adjustments" | "net_salary"
+> & {
+  total_days: number | string;
+  daily_wage: number | string;
+  base_salary: number | string;
+  adjustments: number | string;
+  net_salary: number | string;
+};
+
+export async function getPayroll(period: string): Promise<PayrollRow[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("calculate_payroll", {
+    p_period: period,
+  });
+  if (error) throw new Error(error.message);
+
+  return ((data ?? []) as unknown as DbPayroll[]).map((row) => ({
+    ...row,
+    total_days: num(row.total_days),
+    daily_wage: num(row.daily_wage),
+    base_salary: num(row.base_salary),
+    adjustments: num(row.adjustments),
+    net_salary: num(row.net_salary),
+  }));
+}
+
+type DbAdjustment = PayrollAdjustmentRow & {
+  employee: { full_name: string } | null;
+};
+
+export async function getPayrollAdjustments(
+  period?: string,
+): Promise<PayrollAdjustmentRow[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createSupabaseServerClient();
+  let query = supabase
+    .from("payroll_adjustments")
+    .select(
+      "*, employee:profiles!payroll_adjustments_employee_id_fkey(full_name)",
+    )
+    .order("created_at", { ascending: false });
+  if (period) query = query.eq("period", period);
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  return ((data ?? []) as unknown as DbAdjustment[]).map((row) => ({
+    ...row,
+    amount: num(row.amount),
+    employee_name: row.employee?.full_name ?? "—",
+  }));
 }

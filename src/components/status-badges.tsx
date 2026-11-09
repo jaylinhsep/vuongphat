@@ -4,12 +4,14 @@ import {
   ITEM_TYPE_LABELS,
   MOVEMENT_TYPE_LABELS,
   PRODUCTION_STATUS_LABELS,
+  TASK_STATUS_LABELS,
 } from "@/lib/labels";
 import type {
   CashType,
   ItemType,
   MovementType,
   ProductionStatus,
+  TaskStatus,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -75,6 +77,22 @@ export function CashTypeBadge({ type }: { type: CashType }) {
       )}
     >
       {CASH_TYPE_LABELS[type]}
+    </Badge>
+  );
+}
+
+const TASK_STATUS_TONE: Record<TaskStatus, string> = {
+  can_lam: "bg-amber-100 text-amber-700 border-amber-200",
+  hoan_thanh: "bg-emerald-100 text-emerald-700 border-emerald-200",
+};
+
+export function TaskStatusBadge({ status }: { status: TaskStatus }) {
+  return (
+    <Badge
+      variant="outline"
+      className={cn("font-normal", TASK_STATUS_TONE[status])}
+    >
+      {TASK_STATUS_LABELS[status]}
     </Badge>
   );
 }

@@ -77,6 +77,24 @@ export function lastMonths(count: number): { key: string; label: string }[] {
   return result;
 }
 
+export function currentPeriod(): string {
+  return monthKey(new Date());
+}
+
+export function periodLabel(period: string): string {
+  const [year, month] = period.split("-").map(Number);
+  return `Tháng ${String(month).padStart(2, "0")}/${year}`;
+}
+
+export function periodBounds(period: string): { from: string; to: string } {
+  const [year, month] = period.split("-").map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  return {
+    from: `${period}-01`,
+    to: `${period}-${String(lastDay).padStart(2, "0")}`,
+  };
+}
+
 export function parseNumber(value: FormDataEntryValue | null): number {
   if (value === null) return Number.NaN;
   const normalized = String(value).trim().replace(/\s/g, "").replace(",", ".");

@@ -579,3 +579,191 @@ grant execute on function public.confirm_production(uuid) to authenticated;
 -- Sau khi tạo user trong Authentication > Users, cấp quyền Admin bằng:
 --   update public.profiles set role = 'admin' where id = '<UUID user>';
 -- Các vai trò hợp lệ: admin | kho | san_xuat | ke_toan
+
+-- ---------------------------------------------------------------------------
+-- 10. Nhân sự: hồ sơ mở rộng, nhiệm vụ, chấm công, lương theo ngày công
+-- ---------------------------------------------------------------------------
+
+-- 10.1 Mở rộng hồ sơ nhân viên (email là bản sao hiển thị từ auth.users,
+--      được đồng bộ bởi trigger tạo user và action đổi email).
+alter table public.profiles
+  add column if not exists email text,
+  add column if not exists phone text,
+  add column if not exists address text,
+  add column if not exists job_title text,
+  add column if not exists date_of_birth date,
+  add column if not exists start_date date,
+  add column if not exists daily_wage numeric(14, 2) not null default 0,
+  add column if not exists active boolean not null default true;
+
+-- Sao email từ auth.users sang các hồ sơ đã tồn tại (chạy một lần, bỏ qua null).
+update public.profiles p
+set email = u.email
+from auth.users u
+where p.id = u.id and p.email is null;
+
+-- Trigger tạo hồ sơ: nay kèm email.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, full_name, email)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data ->> 'full_name', split_part(new.email, '@', 1)),
+    new.email
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+-- 10.2 Trạng thái nhiệm vụ
+do $$ begin
+  create type public.task_status as enum ('can_lam', 'hoan_thanh');
+exception when duplicate_object then null; end $$;
+
+-- 10.3 Nhiệm vụ hằng ngày (admin giao, nhân viên tự tích hoàn thành)
+create table if not exists public.tasks (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid not null references public.profiles (id) on delete cascade,
+  title text not null,
+  description text,
+  due_date date not null default current_date,
+  status public.task_status not null default 'can_lam',
+  completed_at timestamptz,
+  created_by uuid references public.profiles (id) on delete set null default auth.uid(),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists tasks_employee_idx
+  on public.tasks (employee_id, due_date desc);
+
+-- 10.4 Chấm công theo ngày (hỗ trợ nửa ngày: 0.5, 1, 1.5, 2)
+create table if not exists public.attendance (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid not null references public.profiles (id) on delete cascade,
+  work_date date not null,
+  days numeric(4, 2) not null default 1 check (days >= 0 and days <= 2),
+  note text,
+  created_by uuid references public.profiles (id) on delete set null default auth.uid(),
+  created_at timestamptz not null default now(),
+  unique (employee_id, work_date)
+);
+
+create index if not exists attendance_date_idx
+  on public.attendance (work_date desc);
+
+-- 10.5 Điều chỉnh lương (thưởng dương / khấu trừ, tạm ứng âm) theo kỳ YYYY-MM
+create table if not exists public.payroll_adjustments (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid not null references public.profiles (id) on delete cascade,
+  period text not null,
+  amount numeric(14, 2) not null,
+  description text,
+  created_by uuid references public.profiles (id) on delete set null default auth.uid(),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists payroll_adjustments_period_idx
+  on public.payroll_adjustments (period, employee_id);
+
+-- 10.6 RLS nhân sự
+alter table public.tasks enable row level security;
+alter table public.attendance enable row level security;
+alter table public.payroll_adjustments enable row level security;
+
+-- Nhiệm vụ: nhân viên thấy/sửa việc của mình, admin toàn quyền.
+drop policy if exists "tasks_select" on public.tasks;
+create policy "tasks_select" on public.tasks
+  for select to authenticated
+  using (employee_id = auth.uid() or public.is_admin());
+
+drop policy if exists "tasks_insert" on public.tasks;
+create policy "tasks_insert" on public.tasks
+  for insert to authenticated
+  with check (public.is_admin());
+
+drop policy if exists "tasks_update" on public.tasks;
+create policy "tasks_update" on public.tasks
+  for update to authenticated
+  using (employee_id = auth.uid() or public.is_admin())
+  with check (employee_id = auth.uid() or public.is_admin());
+
+drop policy if exists "tasks_delete" on public.tasks;
+create policy "tasks_delete" on public.tasks
+  for delete to authenticated
+  using (public.is_admin());
+
+-- Chấm công & điều chỉnh lương: chỉ Admin.
+drop policy if exists "attendance_admin" on public.attendance;
+create policy "attendance_admin" on public.attendance
+  for all to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists "payroll_adjustments_admin" on public.payroll_adjustments;
+create policy "payroll_adjustments_admin" on public.payroll_adjustments
+  for all to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+-- 10.7 RPC tính lương theo ngày công cho một kỳ (YYYY-MM).
+--      base = tổng ngày công × lương/ngày; net = base + tổng điều chỉnh.
+create or replace function public.calculate_payroll(p_period text)
+returns table (
+  employee_id uuid,
+  full_name text,
+  job_title text,
+  role public.user_role,
+  total_days numeric,
+  daily_wage numeric,
+  base_salary numeric,
+  adjustments numeric,
+  net_salary numeric
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Bạn không có quyền xem bảng lương';
+  end if;
+
+  return query
+  with att as (
+    select a.employee_id, coalesce(sum(a.days), 0) as total_days
+    from public.attendance a
+    where to_char(a.work_date, 'YYYY-MM') = p_period
+    group by a.employee_id
+  ),
+  adj as (
+    select pa.employee_id, coalesce(sum(pa.amount), 0) as total_adj
+    from public.payroll_adjustments pa
+    where pa.period = p_period
+    group by pa.employee_id
+  )
+  select
+    p.id,
+    p.full_name,
+    p.job_title,
+    p.role,
+    coalesce(att.total_days, 0),
+    p.daily_wage,
+    round(coalesce(att.total_days, 0) * p.daily_wage, 2),
+    coalesce(adj.total_adj, 0),
+    round(coalesce(att.total_days, 0) * p.daily_wage + coalesce(adj.total_adj, 0), 2)
+  from public.profiles p
+  left join att on att.employee_id = p.id
+  left join adj on adj.employee_id = p.id
+  where p.active
+  order by p.full_name;
+end;
+$$;
+
+grant execute on function public.calculate_payroll(text) to authenticated;

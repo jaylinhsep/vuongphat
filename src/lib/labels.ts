@@ -1,4 +1,4 @@
-import type { CashType, ItemType, MovementType, PaymentMethod, ProductionStatus, Role } from "@/lib/types";
+import type { CashType, ItemType, MovementType, PaymentMethod, ProductionStatus, Role, TaskStatus } from "@/lib/types";
 
 export const ROLE_LABELS: Record<Role, string> = {
   admin: "Quản trị",
@@ -40,6 +40,11 @@ export const PRODUCTION_STATUS_LABELS: Record<ProductionStatus, string> = {
   huy: "Đã huỷ",
 };
 
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  can_lam: "Cần làm",
+  hoan_thanh: "Hoàn thành",
+};
+
 export const CASH_TYPE_LABELS: Record<CashType, string> = {
   thu: "Thu",
   chi: "Chi",
@@ -66,4 +71,6 @@ export const CAN_ACCESS = {
   khoWrite: (role: Role) => role === "admin" || role === "kho",
   sanXuat: (role: Role) => role === "admin" || role === "san_xuat",
   keToan: (role: Role) => role === "admin" || role === "ke_toan",
+  nhanSu: (role: Role) => role === "admin",
+  myTasks: () => true,
 } as const;
