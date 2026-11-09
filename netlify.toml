@@ -1,0 +1,7 @@
+# Netlify tự nhận diện Next.js và cài runtime tương ứng; file này chỉ chốt
+# phiên bản Node và lệnh build để tránh môi trường mặc định lệch phiên bản.
+[build]
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "22"
