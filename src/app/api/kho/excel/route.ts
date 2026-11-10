@@ -15,8 +15,12 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q") ?? undefined;
+  const typeParam = searchParams.get("type");
 
-  const inventory = await getInventory(q);
+  let inventory = await getInventory(q);
+  if (typeParam === "nguyen_lieu" || typeParam === "thanh_pham") {
+    inventory = inventory.filter((item) => item.type === typeParam);
+  }
 
   const totalValue = inventory.reduce(
     (total, item) => total + Math.max(item.on_hand, 0) * item.unit_price,

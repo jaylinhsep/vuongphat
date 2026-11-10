@@ -26,6 +26,7 @@ function refreshSanXuat() {
   revalidatePath("/");
   revalidatePath("/san-xuat");
   revalidatePath("/san-xuat/cong-thuc");
+  revalidatePath("/san-xuat/gia-thanh");
   revalidatePath("/kho");
   revalidatePath("/kho/nhap-xuat");
 }
@@ -129,18 +130,49 @@ export async function createProductionOrderAction(
 
 export async function confirmProductionAction(
   orderId: string,
+  payload?: {
+    actualQuantity?: number;
+    wasteQuantity?: number;
+    laborCost?: number;
+    otherCost?: number;
+    note?: string;
+  },
 ): Promise<FormState> {
   try {
     await requireProductionWrite();
 
     if (!orderId) return { status: "error", message: "Lệnh sản xuất không hợp lệ." };
 
+    const actualQty =
+      payload?.actualQuantity && payload.actualQuantity > 0
+        ? payload.actualQuantity
+        : undefined;
+    const wasteQty =
+      payload?.wasteQuantity != null ? Math.max(payload.wasteQuantity, 0) : 0;
+    const laborCost =
+      payload?.laborCost != null ? Math.max(payload.laborCost, 0) : 0;
+    const otherCost =
+      payload?.otherCost != null ? Math.max(payload.otherCost, 0) : 0;
+    const note = payload?.note?.trim() || undefined;
+
     if (!isSupabaseConfigured()) {
-      demoConfirmOrder(orderId);
+      demoConfirmOrder({
+        orderId,
+        actualQuantity: actualQty,
+        wasteQuantity: wasteQty,
+        laborCost,
+        otherCost,
+        note,
+      });
     } else {
       const supabase = await createSupabaseServerClient();
       const { error } = await supabase.rpc("confirm_production", {
         p_order_id: orderId,
+        p_actual_quantity: actualQty ?? null,
+        p_waste_quantity: wasteQty,
+        p_labor_cost: laborCost,
+        p_other_cost: otherCost,
+        p_note: note ?? null,
       });
       if (error) throw new Error(error.message);
     }
@@ -148,7 +180,7 @@ export async function confirmProductionAction(
     refreshSanXuat();
     return {
       status: "success",
-      message: "Đã xác nhận hoàn thành và cập nhật tồn kho.",
+      message: "Đã nghiệm thu hoàn thành lệnh sản xuất và cập nhật tồn kho.",
     };
   } catch (error) {
     return errorState(error);

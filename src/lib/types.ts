@@ -96,6 +96,13 @@ export type ProductionOrder = {
   code: string;
   product_id: string;
   quantity: number;
+  actual_quantity?: number | null;
+  waste_quantity?: number | null;
+  material_cost?: number | null;
+  labor_cost?: number | null;
+  other_cost?: number | null;
+  total_cost?: number | null;
+  unit_cost?: number | null;
   status: ProductionStatus;
   planned_date: string;
   completed_at: string | null;
@@ -108,6 +115,29 @@ export type ProductionRow = ProductionOrder & {
   product_name: string;
   product_code: string;
   product_unit: string;
+};
+
+export type ProductionCostReportRow = {
+  order_id: string;
+  order_code: string;
+  product_id: string;
+  product_name: string;
+  product_code: string;
+  product_unit: string;
+  product_sale_price: number;
+  planned_quantity: number;
+  actual_quantity: number;
+  waste_quantity: number;
+  waste_rate: number;
+  material_cost: number;
+  labor_cost: number;
+  other_cost: number;
+  total_cost: number;
+  unit_cost: number;
+  gross_profit_per_unit: number;
+  gross_margin_rate: number;
+  completed_at: string | null;
+  note: string | null;
 };
 
 export type CashTransaction = {

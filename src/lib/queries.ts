@@ -14,6 +14,7 @@ import {
   demoOrders,
   demoPayroll,
   demoPayrollAdjustments,
+  demoProductionCostReport,
   demoPurchaseOrder,
   demoPurchaseOrders,
   demoSalesOrder,
@@ -41,6 +42,7 @@ import type {
   MovementRow,
   PayrollAdjustmentRow,
   PayrollRow,
+  ProductionCostReportRow,
   ProductionRow,
   PurchaseOrderRow,
   PurchaseOrderStatus,
@@ -229,13 +231,20 @@ type DbOrder = {
   code: string;
   product_id: string;
   quantity: number | string;
+  actual_quantity?: number | string | null;
+  waste_quantity?: number | string | null;
+  material_cost?: number | string | null;
+  labor_cost?: number | string | null;
+  other_cost?: number | string | null;
+  total_cost?: number | string | null;
+  unit_cost?: number | string | null;
   status: ProductionRow["status"];
   planned_date: string;
   completed_at: string | null;
   note: string | null;
   created_by: string | null;
   created_at: string;
-  items: { name: string; code: string; unit: string } | null;
+  items: { name: string; code: string; unit: string; unit_price?: number | string } | null;
 };
 
 export async function getProductionOrders(): Promise<ProductionRow[]> {
@@ -244,7 +253,7 @@ export async function getProductionOrders(): Promise<ProductionRow[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("production_orders")
-    .select("*, items(name, code, unit)")
+    .select("*, items(name, code, unit, unit_price)")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -252,10 +261,89 @@ export async function getProductionOrders(): Promise<ProductionRow[]> {
   return ((data ?? []) as unknown as DbOrder[]).map((order) => ({
     ...order,
     quantity: num(order.quantity),
+    actual_quantity: order.actual_quantity != null ? num(order.actual_quantity) : null,
+    waste_quantity: order.waste_quantity != null ? num(order.waste_quantity) : 0,
+    material_cost: order.material_cost != null ? num(order.material_cost) : 0,
+    labor_cost: order.labor_cost != null ? num(order.labor_cost) : 0,
+    other_cost: order.other_cost != null ? num(order.other_cost) : 0,
+    total_cost: order.total_cost != null ? num(order.total_cost) : 0,
+    unit_cost: order.unit_cost != null ? num(order.unit_cost) : 0,
     product_name: order.items?.name ?? "—",
     product_code: order.items?.code ?? "—",
     product_unit: order.items?.unit ?? "",
   }));
+}
+
+export async function getProductionCostReport(filter?: {
+  from?: string;
+  to?: string;
+  productId?: string;
+}): Promise<ProductionCostReportRow[]> {
+  if (!isSupabaseConfigured()) {
+    return demoProductionCostReport(filter);
+  }
+
+  const supabase = await createSupabaseServerClient();
+  let query = supabase
+    .from("production_orders")
+    .select("*, items(name, code, unit, unit_price)")
+    .eq("status", "hoan_thanh")
+    .not("completed_at", "is", null)
+    .order("completed_at", { ascending: false });
+
+  if (filter?.from) query = query.gte("completed_at", filter.from);
+  if (filter?.to) query = query.lte("completed_at", `${filter.to}T23:59:59.999Z`);
+  if (filter?.productId && filter.productId !== "all") query = query.eq("product_id", filter.productId);
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  return ((data ?? []) as unknown as DbOrder[]).map((order) => {
+    const plannedQty = num(order.quantity);
+    const actualQty = order.actual_quantity != null ? num(order.actual_quantity) : plannedQty;
+    const wasteQty = order.waste_quantity != null ? num(order.waste_quantity) : 0;
+    const totalOutput = actualQty + wasteQty;
+    const wasteRate = totalOutput > 0 ? Math.round((wasteQty / totalOutput) * 1000) / 10 : 0;
+
+    const materialCost = order.material_cost != null ? num(order.material_cost) : 0;
+    const laborCost = order.labor_cost != null ? num(order.labor_cost) : 0;
+    const otherCost = order.other_cost != null ? num(order.other_cost) : 0;
+    const totalCost =
+      order.total_cost != null ? num(order.total_cost) : materialCost + laborCost + otherCost;
+    const unitCost =
+      order.unit_cost != null
+        ? num(order.unit_cost)
+        : actualQty > 0
+          ? Math.round(totalCost / actualQty)
+          : 0;
+    const salePrice = order.items?.unit_price != null ? num(order.items.unit_price) : 0;
+    const grossProfitPerUnit = salePrice - unitCost;
+    const grossMarginRate =
+      salePrice > 0 ? Math.round((grossProfitPerUnit / salePrice) * 1000) / 10 : 0;
+
+    return {
+      order_id: order.id,
+      order_code: order.code,
+      product_id: order.product_id,
+      product_name: order.items?.name ?? "—",
+      product_code: order.items?.code ?? "—",
+      product_unit: order.items?.unit ?? "",
+      product_sale_price: salePrice,
+      planned_quantity: plannedQty,
+      actual_quantity: actualQty,
+      waste_quantity: wasteQty,
+      waste_rate: wasteRate,
+      material_cost: materialCost,
+      labor_cost: laborCost,
+      other_cost: otherCost,
+      total_cost: totalCost,
+      unit_cost: unitCost,
+      gross_profit_per_unit: grossProfitPerUnit,
+      gross_margin_rate: grossMarginRate,
+      completed_at: order.completed_at,
+      note: order.note,
+    };
+  });
 }
 
 type DbCash = Omit<CashRow, "created_by_name"> & {

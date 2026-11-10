@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  CalculatorIcon,
   CheckCircle2Icon,
   ClockIcon,
   FactoryIcon,
@@ -59,6 +60,11 @@ export default async function SanXuatPage() {
         <Button asChild variant="outline" size="sm">
           <Link href="/san-xuat/cong-thuc">
             <FlaskConicalIcon /> Công thức BOM
+          </Link>
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/san-xuat/gia-thanh">
+            <CalculatorIcon /> Báo cáo giá thành
           </Link>
         </Button>
         <ProductionOrderDialog products={products} />
@@ -140,10 +146,28 @@ export default async function SanXuatPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {formatQuantity(order.quantity)}{" "}
-                          <span className="text-xs font-normal text-muted-foreground">
-                            {order.product_unit}
-                          </span>
+                          {order.status === "hoan_thanh" && order.actual_quantity != null ? (
+                            <>
+                              <div>
+                                {formatQuantity(order.actual_quantity)}{" "}
+                                <span className="text-xs font-normal text-muted-foreground">
+                                  {order.product_unit}
+                                </span>
+                              </div>
+                              {order.waste_quantity ? (
+                                <span className="block text-[11px] font-normal text-rose-600">
+                                  Hao hụt: {formatQuantity(order.waste_quantity)}
+                                </span>
+                              ) : null}
+                            </>
+                          ) : (
+                            <>
+                              {formatQuantity(order.quantity)}{" "}
+                              <span className="text-xs font-normal text-muted-foreground">
+                                {order.product_unit}
+                              </span>
+                            </>
+                          )}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {formatDate(order.planned_date)}
@@ -173,10 +197,13 @@ export default async function SanXuatPage() {
                             <ConfirmOrderButton
                               orderId={order.id}
                               orderCode={order.code}
+                              productName={order.product_name}
+                              plannedQuantity={order.quantity}
+                              productUnit={order.product_unit}
                             />
                           ) : (
                             <span className="text-xs text-muted-foreground">
-                              —
+                              Đã nhập kho
                             </span>
                           )}
                         </TableCell>

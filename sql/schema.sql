@@ -188,6 +188,13 @@ create table if not exists public.production_orders (
   ),
   product_id uuid not null references public.items (id) on delete restrict,
   quantity numeric(14, 3) not null check (quantity > 0),
+  actual_quantity numeric(14, 3),
+  waste_quantity numeric(14, 3) not null default 0,
+  material_cost numeric(14, 2) not null default 0,
+  labor_cost numeric(14, 2) not null default 0,
+  other_cost numeric(14, 2) not null default 0,
+  total_cost numeric(14, 2) not null default 0,
+  unit_cost numeric(14, 2) not null default 0,
   status public.production_status not null default 'cho_xac_nhan',
   planned_date date not null default current_date,
   completed_at timestamptz,
@@ -459,8 +466,15 @@ begin
 end;
 $$;
 
--- Xác nhận hoàn thành lệnh sản xuất: kiểm tra & trừ nguyên liệu, nhập thành phẩm.
-create or replace function public.confirm_production(p_order_id uuid)
+-- Xác nhận hoàn thành lệnh sản xuất: kiểm tra & trừ nguyên liệu, nhập thành phẩm theo sản lượng thực tế, tính giá thành đầy đủ.
+create or replace function public.confirm_production(
+  p_order_id uuid,
+  p_actual_quantity numeric default null,
+  p_waste_quantity numeric default 0,
+  p_labor_cost numeric default 0,
+  p_other_cost numeric default 0,
+  p_note text default null
+)
 returns numeric
 language plpgsql
 security definer
@@ -471,8 +485,13 @@ declare
   v_bom public.boms;
   v_line record;
   v_on_hand numeric;
+  v_material_cost numeric := 0;
   v_total_cost numeric := 0;
   v_unit_cost numeric := 0;
+  v_actual_quantity numeric;
+  v_waste_quantity numeric := coalesce(p_waste_quantity, 0);
+  v_labor_cost numeric := coalesce(p_labor_cost, 0);
+  v_other_cost numeric := coalesce(p_other_cost, 0);
 begin
   if public.my_role() not in ('admin', 'san_xuat') then
     raise exception 'Bạn không có quyền xác nhận sản xuất';
@@ -487,6 +506,11 @@ begin
 
   if v_order.status <> 'cho_xac_nhan' then
     raise exception 'Lệnh sản xuất đã được xử lý';
+  end if;
+
+  v_actual_quantity := coalesce(p_actual_quantity, v_order.quantity);
+  if v_actual_quantity <= 0 then
+    raise exception 'Số lượng thực tế nhập kho phải lớn hơn 0';
   end if;
 
   select * into v_bom from public.boms where product_id = v_order.product_id;
@@ -528,10 +552,13 @@ begin
   select coalesce(sum(
     bi.quantity * v_order.quantity / v_bom.output_quantity * i.unit_price
   ), 0)
-  into v_total_cost
+  into v_material_cost
   from public.bom_items bi
   join public.items i on i.id = bi.material_id
   where bi.bom_id = v_bom.id;
+
+  v_total_cost := v_material_cost + v_labor_cost + v_other_cost;
+  v_unit_cost := round(v_total_cost / v_actual_quantity, 2);
 
   insert into public.stock_movements
     (item_id, type, quantity, unit_price, note, reference_type, reference_id, created_by)
@@ -547,19 +574,24 @@ begin
   join public.items i on i.id = bi.material_id
   where bi.bom_id = v_bom.id;
 
-  if v_order.quantity > 0 then
-    v_unit_cost := round(v_total_cost / v_order.quantity, 2);
-  end if;
-
   insert into public.stock_movements
     (item_id, type, quantity, unit_price, note, reference_type, reference_id, created_by)
   values
-    (v_order.product_id, 'san_xuat_nhap', v_order.quantity, v_unit_cost,
-     'Nhập thành phẩm từ lệnh ' || v_order.code,
+    (v_order.product_id, 'san_xuat_nhap', v_actual_quantity, v_unit_cost,
+     'Nhập thành phẩm từ lệnh ' || v_order.code || ' (thực tế: ' || v_actual_quantity || ', hao hụt: ' || v_waste_quantity || ')',
      'production_order', v_order.id, auth.uid());
 
   update public.production_orders
-  set status = 'hoan_thanh', completed_at = now()
+  set status = 'hoan_thanh',
+      actual_quantity = v_actual_quantity,
+      waste_quantity = v_waste_quantity,
+      material_cost = v_material_cost,
+      labor_cost = v_labor_cost,
+      other_cost = v_other_cost,
+      total_cost = v_total_cost,
+      unit_cost = v_unit_cost,
+      note = case when p_note is not null and p_note <> '' then p_note else note end,
+      completed_at = now()
   where id = p_order_id;
 
   return v_total_cost;
@@ -571,7 +603,7 @@ grant execute on function public.create_stock_movement(
 ) to authenticated;
 
 grant execute on function public.save_bom(uuid, numeric, text, jsonb) to authenticated;
-grant execute on function public.confirm_production(uuid) to authenticated;
+grant execute on function public.confirm_production(uuid, numeric, numeric, numeric, numeric, text) to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 9. Ghi chú vận hành

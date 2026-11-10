@@ -31,27 +31,52 @@ import { getInventory } from "@/lib/queries";
 export default async function KhoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; type?: string }>;
 }) {
   const user = await requireRole(CAN_ACCESS.kho);
-  const { q } = await searchParams;
+  const { q, type } = await searchParams;
   const inventory = await getInventory(q);
+
+  const selectedType =
+    type === "nguyen_lieu" || type === "thanh_pham" ? type : "all";
+
+  const displayedInventory =
+    selectedType === "all"
+      ? inventory
+      : inventory.filter((item) => item.type === selectedType);
 
   const totalValue = inventory.reduce(
     (total, item) => total + Math.max(item.on_hand, 0) * item.unit_price,
     0,
   );
+  const nlValue = inventory
+    .filter((item) => item.type === "nguyen_lieu")
+    .reduce(
+      (total, item) => total + Math.max(item.on_hand, 0) * item.unit_price,
+      0,
+    );
+  const tpValue = inventory
+    .filter((item) => item.type === "thanh_pham")
+    .reduce(
+      (total, item) => total + Math.max(item.on_hand, 0) * item.unit_price,
+      0,
+    );
+
   const lowStock = inventory.filter(
     (item) => item.min_stock > 0 && item.on_hand < item.min_stock,
   ).length;
   const canWrite = CAN_ACCESS.khoWrite(user.role);
-  const exportHref = `/api/kho/excel${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+
+  const exportUrlParams = new URLSearchParams();
+  if (q) exportUrlParams.set("q", q);
+  if (selectedType !== "all") exportUrlParams.set("type", selectedType);
+  const exportHref = `/api/kho/excel?${exportUrlParams.toString()}`;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Tồn kho"
-        description="Số lượng tồn khả dụng theo thời gian thực, tính từ toàn bộ phiếu kho."
+        description="Quản lý đa kho theo thời gian thực: Kho Nguyên vật liệu và Kho Thành phẩm, tính từ toàn bộ phiếu kho."
       >
         <Button asChild variant="outline" size="sm">
           <a href={exportHref}>
@@ -74,16 +99,23 @@ export default async function KhoPage({
         )}
       </PageHeader>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <StatCard
           label="Mặt hàng đang quản lý"
           value={formatNumber(inventory.length)}
           icon={BoxesIcon}
         />
         <StatCard
-          label="Giá trị tồn kho"
-          value={formatCurrency(totalValue)}
-          hint="Theo đơn giá hiện hành"
+          label="Kho Nguyên liệu"
+          value={formatCurrency(nlValue)}
+          hint="Giá trị tồn NVL hiện hành"
+          icon={CoinsIcon}
+          tone="primary"
+        />
+        <StatCard
+          label="Kho Thành phẩm"
+          value={formatCurrency(tpValue)}
+          hint="Giá trị tồn thành phẩm"
           icon={CoinsIcon}
           tone="emerald"
         />
@@ -96,10 +128,55 @@ export default async function KhoPage({
         />
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        <Button
+          asChild
+          variant={selectedType === "all" ? "default" : "outline"}
+          size="sm"
+        >
+          <Link href={`/kho${q ? `?q=${encodeURIComponent(q)}` : ""}`}>
+            Tất cả các kho ({inventory.length})
+          </Link>
+        </Button>
+        <Button
+          asChild
+          variant={selectedType === "nguyen_lieu" ? "default" : "outline"}
+          size="sm"
+        >
+          <Link
+            href={`/kho?type=nguyen_lieu${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+          >
+            Kho Nguyên liệu (
+            {inventory.filter((i) => i.type === "nguyen_lieu").length})
+          </Link>
+        </Button>
+        <Button
+          asChild
+          variant={selectedType === "thanh_pham" ? "default" : "outline"}
+          size="sm"
+        >
+          <Link
+            href={`/kho?type=thanh_pham${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+          >
+            Kho Thành phẩm (
+            {inventory.filter((i) => i.type === "thanh_pham").length})
+          </Link>
+        </Button>
+      </div>
+
       <Card>
         <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>Danh sách hàng hóa</CardTitle>
+          <CardTitle>
+            {selectedType === "nguyen_lieu"
+              ? "Kho Nguyên vật liệu"
+              : selectedType === "thanh_pham"
+                ? "Kho Thành phẩm"
+                : "Danh sách toàn bộ hàng hóa"}
+          </CardTitle>
           <form action="/kho" className="flex w-full gap-2 sm:w-auto">
+            {selectedType !== "all" && (
+              <input type="hidden" name="type" value={selectedType} />
+            )}
             <Input
               name="q"
               defaultValue={q ?? ""}
@@ -118,7 +195,7 @@ export default async function KhoPage({
                 <TableRow>
                   <TableHead>Mã</TableHead>
                   <TableHead className="whitespace-normal">Tên hàng hóa</TableHead>
-                  <TableHead>Loại</TableHead>
+                  <TableHead>Loại kho</TableHead>
                   <TableHead className="text-right">Tồn kho</TableHead>
                   <TableHead className="text-right">Đơn giá</TableHead>
                   <TableHead className="text-right">Giá trị tồn</TableHead>
@@ -126,7 +203,7 @@ export default async function KhoPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {inventory.length === 0 ? (
+                {displayedInventory.length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={7}
@@ -136,7 +213,7 @@ export default async function KhoPage({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  inventory.map((item) => {
+                  displayedInventory.map((item) => {
                     const isLow =
                       item.min_stock > 0 && item.on_hand < item.min_stock;
                     return (

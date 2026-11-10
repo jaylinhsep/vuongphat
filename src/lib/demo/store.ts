@@ -25,6 +25,7 @@ import type {
   PayrollRow,
   ProductionOrder,
   ProductionRow,
+  ProductionCostReportRow,
   PurchaseOrder,
   PurchaseOrderItem,
   PurchaseOrderItemRow,
@@ -141,12 +142,39 @@ function seed(): DemoState {
     code: "LSX-2601-001",
     product_id: "tp-001",
     quantity: 10,
+    actual_quantity: 10,
+    waste_quantity: 0,
+    material_cost: 128_100,
+    labor_cost: 40_000,
+    other_cost: 10_000,
+    total_cost: 178_100,
+    unit_cost: 17_810,
     status: "hoan_thanh",
     planned_date: dateDaysAgo(4),
     completed_at: daysAgo(3),
-    note: "Lô bánh buổi sáng",
+    note: "Lô bánh buổi sáng, đạt chuẩn chất lượng",
     created_by: null,
     created_at: daysAgo(5),
+  };
+
+  const completedOrder2: ProductionOrder = {
+    id: "lsx-000",
+    code: "LSX-2601-000",
+    product_id: "tp-002",
+    quantity: 6,
+    actual_quantity: 5,
+    waste_quantity: 1,
+    material_cost: 212_400,
+    labor_cost: 120_000,
+    other_cost: 25_000,
+    total_cost: 357_400,
+    unit_cost: 71_480,
+    status: "hoan_thanh",
+    planned_date: dateDaysAgo(8),
+    completed_at: daysAgo(7),
+    note: "Bánh kem sự kiện (1 cái lỗi kem trang trí)",
+    created_by: null,
+    created_at: daysAgo(9),
   };
 
   const finishedCost = 0.25 * 25_000 + 0.03 * 22_000 + 0.02 * 120_000 + 1 * 3_500;
@@ -218,6 +246,7 @@ function seed(): DemoState {
       created_at: daysAgo(1, 16),
     },
     completedOrder,
+    completedOrder2,
   ];
 
   const cash: CashTransaction[] = [];
@@ -945,15 +974,32 @@ export function demoCreateOrder(input: {
   });
 }
 
-export function demoConfirmOrder(orderId: string): void {
+export function demoConfirmOrder(
+  arg:
+    | string
+    | {
+        orderId: string;
+        actualQuantity?: number;
+        wasteQuantity?: number;
+        laborCost?: number;
+        otherCost?: number;
+        note?: string;
+      },
+): void {
   const state = db();
-  const order = state.orders.find((entry) => entry.id === orderId);
+  const input = typeof arg === "string" ? { orderId: arg } : arg;
+  const order = state.orders.find((entry) => entry.id === input.orderId);
   if (!order) throw new Error("Không tìm thấy lệnh sản xuất");
   if (order.status !== "cho_xac_nhan") throw new Error("Lệnh sản xuất đã được xử lý");
 
   const bom = state.boms.find((entry) => entry.product_id === order.product_id);
   if (!bom) throw new Error("Thành phẩm chưa có công thức định lượng (BOM)");
   if (!bom.items.length) throw new Error("Công thức định lượng đang rỗng");
+
+  const actualQuantity = input.actualQuantity && input.actualQuantity > 0 ? input.actualQuantity : order.quantity;
+  const wasteQuantity = Math.max(input.wasteQuantity ?? 0, 0);
+  const laborCost = Math.max(input.laborCost ?? 0, 0);
+  const otherCost = Math.max(input.otherCost ?? 0, 0);
 
   const needed = bom.items.map((line) => ({
     line,
@@ -970,10 +1016,13 @@ export function demoConfirmOrder(orderId: string): void {
     }
   }
 
-  const totalCost = needed.reduce((total, entry) => {
+  const materialCost = needed.reduce((total, entry) => {
     const material = state.items.find((item) => item.id === entry.line.material_id);
     return total + entry.required * (material?.unit_price ?? 0);
   }, 0);
+
+  const totalCost = materialCost + laborCost + otherCost;
+  const unitCost = Math.round(totalCost / actualQuantity);
 
   for (const entry of needed) {
     const material = state.items.find((item) => item.id === entry.line.material_id);
@@ -996,10 +1045,10 @@ export function demoConfirmOrder(orderId: string): void {
     id: uid(),
     item_id: order.product_id,
     type: "san_xuat_nhap",
-    quantity: order.quantity,
-    unit_price: Math.round(totalCost / order.quantity),
+    quantity: actualQuantity,
+    unit_price: unitCost,
     supplier_id: null,
-    note: `Nhập thành phẩm từ lệnh ${order.code}`,
+    note: `Nhập thành phẩm từ lệnh ${order.code} (thực tế: ${actualQuantity}, hao hụt: ${wasteQuantity})`,
     reference_type: "production_order",
     reference_id: order.id,
     created_by: null,
@@ -1007,7 +1056,77 @@ export function demoConfirmOrder(orderId: string): void {
   });
 
   order.status = "hoan_thanh";
+  order.actual_quantity = actualQuantity;
+  order.waste_quantity = wasteQuantity;
+  order.material_cost = materialCost;
+  order.labor_cost = laborCost;
+  order.other_cost = otherCost;
+  order.total_cost = totalCost;
+  order.unit_cost = unitCost;
+  if (input.note) {
+    order.note = input.note;
+  }
   order.completed_at = nowISO();
+}
+
+export function demoProductionCostReport(filter?: {
+  from?: string;
+  to?: string;
+  productId?: string;
+}): ProductionCostReportRow[] {
+  const state = db();
+  const completedOrders = state.orders.filter(
+    (order) => order.status === "hoan_thanh" && order.completed_at,
+  );
+
+  const rows: ProductionCostReportRow[] = [];
+  for (const order of completedOrders) {
+    const completedDate = order.completed_at ? order.completed_at.slice(0, 10) : "";
+    if (filter?.from && completedDate < filter.from) continue;
+    if (filter?.to && completedDate > filter.to) continue;
+    if (filter?.productId && filter.productId !== "all" && order.product_id !== filter.productId) continue;
+
+    const product = state.items.find((item) => item.id === order.product_id);
+    const plannedQty = order.quantity;
+    const actualQty = order.actual_quantity ?? plannedQty;
+    const wasteQty = order.waste_quantity ?? 0;
+    const totalOutput = actualQty + wasteQty;
+    const wasteRate = totalOutput > 0 ? Math.round((wasteQty / totalOutput) * 1000) / 10 : 0;
+
+    const materialCost = order.material_cost ?? 0;
+    const laborCost = order.labor_cost ?? 0;
+    const otherCost = order.other_cost ?? 0;
+    const totalCost = order.total_cost ?? (materialCost + laborCost + otherCost);
+    const unitCost = order.unit_cost ?? (actualQty > 0 ? Math.round(totalCost / actualQty) : 0);
+    const salePrice = product?.unit_price ?? 0;
+    const grossProfitPerUnit = salePrice - unitCost;
+    const grossMarginRate = salePrice > 0 ? Math.round((grossProfitPerUnit / salePrice) * 1000) / 10 : 0;
+
+    rows.push({
+      order_id: order.id,
+      order_code: order.code,
+      product_id: order.product_id,
+      product_name: product?.name ?? "—",
+      product_code: product?.code ?? "—",
+      product_unit: product?.unit ?? "",
+      product_sale_price: salePrice,
+      planned_quantity: plannedQty,
+      actual_quantity: actualQty,
+      waste_quantity: wasteQty,
+      waste_rate: wasteRate,
+      material_cost: materialCost,
+      labor_cost: laborCost,
+      other_cost: otherCost,
+      total_cost: totalCost,
+      unit_cost: unitCost,
+      gross_profit_per_unit: grossProfitPerUnit,
+      gross_margin_rate: grossMarginRate,
+      completed_at: order.completed_at,
+      note: order.note,
+    });
+  }
+
+  return rows.sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""));
 }
 
 export function demoCash(filter: CashFilter = {}): CashRow[] {
