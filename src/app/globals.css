@@ -138,6 +138,18 @@
   background: #f0f0f0;
   font-weight: 600;
 }
+.print-table tfoot td.print-total {
+  border: 2px solid #000;
+  background: #f0f0f0;
+  padding: 9px 7px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: left;
+}
+.print-table tfoot td.print-total .print-total-qty {
+  font-size: 1.35rem;
+  font-weight: 800;
+}
 
 @media print {
   @page {
@@ -158,6 +170,11 @@
     box-shadow: none !important;
   }
   .print-table th {
+    background: #f0f0f0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-table tfoot td.print-total {
     background: #f0f0f0 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;

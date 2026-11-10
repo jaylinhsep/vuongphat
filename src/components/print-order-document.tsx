@@ -152,6 +152,17 @@ export function PrintOrderDocument({
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={6} className="print-total">
+                    TỔNG CỘNG SỐ LƯỢNG CẦN SẢN XUẤT (ĐẦU RA):{" "}
+                    <span className="print-total-qty">
+                      {formatQuantity(order.quantity)} {order.product_unit}
+                    </span>{" "}
+                    — {order.product_name}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
             {bom.note && (
               <p className="mt-2 text-xs text-neutral-600">
