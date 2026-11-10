@@ -27,12 +27,14 @@ export function ConfirmOrderButton({
   productName,
   plannedQuantity = 0,
   productUnit = "cái",
+  canInputCost = false,
 }: {
   orderId: string;
   orderCode: string;
   productName?: string;
   plannedQuantity?: number;
   productUnit?: string;
+  canInputCost?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -146,35 +148,37 @@ export function ConfirmOrderButton({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor={`labor-${orderId}`}>Chi phí nhân công (VNĐ)</Label>
-                <Input
-                  id={`labor-${orderId}`}
-                  type="number"
-                  min="0"
-                  step="1000"
-                  placeholder="0"
-                  value={laborCost || ""}
-                  onChange={(e) => setLaborCost(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                />
-                <p className="text-[11px] text-muted-foreground">Phân bổ lương công nhật/khoán</p>
-              </div>
+            {canInputCost && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor={`labor-${orderId}`}>Chi phí nhân công (VNĐ)</Label>
+                  <Input
+                    id={`labor-${orderId}`}
+                    type="number"
+                    min="0"
+                    step="1000"
+                    placeholder="0"
+                    value={laborCost || ""}
+                    onChange={(e) => setLaborCost(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                  />
+                  <p className="text-[11px] text-muted-foreground">Phân bổ lương công nhật/khoán</p>
+                </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor={`other-${orderId}`}>Chi phí chung / khác (VNĐ)</Label>
-                <Input
-                  id={`other-${orderId}`}
-                  type="number"
-                  min="0"
-                  step="1000"
-                  placeholder="0"
-                  value={otherCost || ""}
-                  onChange={(e) => setOtherCost(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                />
-                <p className="text-[11px] text-muted-foreground">Điện nước, bao bì đóng gói</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor={`other-${orderId}`}>Chi phí chung / khác (VNĐ)</Label>
+                  <Input
+                    id={`other-${orderId}`}
+                    type="number"
+                    min="0"
+                    step="1000"
+                    placeholder="0"
+                    value={otherCost || ""}
+                    onChange={(e) => setOtherCost(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                  />
+                  <p className="text-[11px] text-muted-foreground">Điện nước, bao bì đóng gói</p>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="space-y-1.5">
               <Label htmlFor={`note-${orderId}`}>Ghi chú nghiệm thu</Label>

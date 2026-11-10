@@ -55,7 +55,7 @@ export default async function GiaThanhPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; productId?: string }>;
 }) {
-  await requireRole(CAN_ACCESS.sanXuat);
+  await requireRole(CAN_ACCESS.sanXuatGiaThanh);
   const params = await searchParams;
 
   const from = params.from || "";

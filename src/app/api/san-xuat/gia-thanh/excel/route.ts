@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
-  if (!user || !CAN_ACCESS.sanXuat(user.role)) {
+  if (!user || !CAN_ACCESS.sanXuatGiaThanh(user.role)) {
     return new NextResponse("Bạn không có quyền xuất báo cáo giá thành sản xuất.", {
       status: 403,
     });

@@ -23,7 +23,7 @@ import { CAN_ACCESS } from "@/lib/labels";
 import { getBoms, getItems } from "@/lib/queries";
 
 export default async function CongThucPage() {
-  await requireRole(CAN_ACCESS.sanXuat);
+  await requireRole(CAN_ACCESS.sanXuatBom);
 
   const [boms, products, materials] = await Promise.all([
     getBoms(),

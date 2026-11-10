@@ -22,6 +22,15 @@ async function requireProductionWrite() {
   return user;
 }
 
+async function requireBomWrite() {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Phiên đăng nhập đã hết hạn.");
+  if (!CAN_ACCESS.sanXuatBom(user.role)) {
+    throw new Error("Bạn không có quyền thiết lập công thức (chỉ dành cho Quản trị viên).");
+  }
+  return user;
+}
+
 function refreshSanXuat() {
   revalidatePath("/");
   revalidatePath("/san-xuat");
@@ -36,7 +45,7 @@ export async function saveBomAction(
   formData: FormData,
 ): Promise<FormState> {
   try {
-    await requireProductionWrite();
+    await requireBomWrite();
 
     const productId = String(formData.get("product_id") ?? "");
     const outputQuantity = parseNumber(formData.get("output_quantity"));

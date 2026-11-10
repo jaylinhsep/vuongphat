@@ -39,7 +39,7 @@ import { CAN_ACCESS } from "@/lib/labels";
 import { getBoms, getItems, getProductionOrders } from "@/lib/queries";
 
 export default async function SanXuatPage() {
-  await requireRole(CAN_ACCESS.sanXuat);
+  const user = await requireRole(CAN_ACCESS.sanXuat);
 
   const [orders, products, boms] = await Promise.all([
     getProductionOrders(),
@@ -57,16 +57,20 @@ export default async function SanXuatPage() {
         title="Lệnh sản xuất"
         description="Tạo lệnh và xác nhận hoàn thành để hệ thống tự động trừ nguyên liệu, nhập thành phẩm."
       >
-        <Button asChild variant="outline" size="sm">
-          <Link href="/san-xuat/cong-thuc">
-            <FlaskConicalIcon /> Công thức BOM
-          </Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/san-xuat/gia-thanh">
-            <CalculatorIcon /> Báo cáo giá thành
-          </Link>
-        </Button>
+        {CAN_ACCESS.sanXuatBom(user.role) && (
+          <Button asChild variant="outline" size="sm">
+            <Link href="/san-xuat/cong-thuc">
+              <FlaskConicalIcon /> Công thức BOM
+            </Link>
+          </Button>
+        )}
+        {CAN_ACCESS.sanXuatGiaThanh(user.role) && (
+          <Button asChild variant="outline" size="sm">
+            <Link href="/san-xuat/gia-thanh">
+              <CalculatorIcon /> Báo cáo giá thành
+            </Link>
+          </Button>
+        )}
         <ProductionOrderDialog products={products} />
       </PageHeader>
 
@@ -200,6 +204,7 @@ export default async function SanXuatPage() {
                               productName={order.product_name}
                               plannedQuantity={order.quantity}
                               productUnit={order.product_unit}
+                              canInputCost={CAN_ACCESS.sanXuatGiaThanh(user.role)}
                             />
                           ) : (
                             <span className="text-xs text-muted-foreground">

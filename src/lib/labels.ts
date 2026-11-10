@@ -99,6 +99,8 @@ export const CAN_ACCESS = {
   kho: (role: Role) => role === "admin" || role === "kho" || role === "ke_toan",
   khoWrite: (role: Role) => role === "admin" || role === "kho",
   sanXuat: (role: Role) => role === "admin" || role === "san_xuat",
+  sanXuatBom: (role: Role) => role === "admin",
+  sanXuatGiaThanh: (role: Role) => role === "admin" || role === "ke_toan",
   keToan: (role: Role) => role === "admin" || role === "ke_toan",
   nhanSu: (role: Role) => role === "admin",
   banHang: (role: Role) => role === "admin" || role === "ke_toan" || role === "kho",
