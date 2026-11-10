@@ -1,13 +1,19 @@
 import { isSupabaseConfigured } from "@/lib/config";
 import {
+  demoAttendance,
+  demoAttendanceSummary,
   demoBoms,
   demoCash,
   demoDashboard,
+  demoEmployees,
   demoInventory,
   demoItems,
   demoMovements,
   demoOrders,
+  demoPayroll,
+  demoPayrollAdjustments,
   demoSuppliers,
+  demoTasks,
 } from "@/lib/demo/store";
 import { lastMonths, monthKey, periodBounds, startOfMonthISO, todayISO } from "@/lib/format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -345,7 +351,7 @@ type DbEmployee = Omit<Employee, "daily_wage"> & {
 };
 
 export async function getEmployees(): Promise<Employee[]> {
-  if (!isSupabaseConfigured()) return [];
+  if (!isSupabaseConfigured()) return demoEmployees();
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -367,7 +373,7 @@ type DbTask = TaskRow & {
 };
 
 export async function getTasks(employeeId?: string): Promise<TaskRow[]> {
-  if (!isSupabaseConfigured()) return [];
+  if (!isSupabaseConfigured()) return demoTasks(employeeId);
 
   const supabase = await createSupabaseServerClient();
   let query = supabase
@@ -394,7 +400,7 @@ type DbAttendance = AttendanceRow & {
 };
 
 export async function getAttendance(period?: string): Promise<AttendanceRow[]> {
-  if (!isSupabaseConfigured()) return [];
+  if (!isSupabaseConfigured()) return demoAttendance(period);
 
   const supabase = await createSupabaseServerClient();
   let query = supabase
@@ -420,7 +426,7 @@ export async function getAttendance(period?: string): Promise<AttendanceRow[]> {
 export async function getAttendanceSummary(
   period: string,
 ): Promise<AttendanceSummary[]> {
-  if (!isSupabaseConfigured()) return [];
+  if (!isSupabaseConfigured()) return demoAttendanceSummary(period);
 
   const supabase = await createSupabaseServerClient();
   const { from, to } = periodBounds(period);
@@ -472,7 +478,7 @@ type DbPayroll = Omit<
 };
 
 export async function getPayroll(period: string): Promise<PayrollRow[]> {
-  if (!isSupabaseConfigured()) return [];
+  if (!isSupabaseConfigured()) return demoPayroll(period);
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.rpc("calculate_payroll", {
@@ -497,7 +503,7 @@ type DbAdjustment = PayrollAdjustmentRow & {
 export async function getPayrollAdjustments(
   period?: string,
 ): Promise<PayrollAdjustmentRow[]> {
-  if (!isSupabaseConfigured()) return [];
+  if (!isSupabaseConfigured()) return demoPayrollAdjustments(period);
 
   const supabase = await createSupabaseServerClient();
   let query = supabase

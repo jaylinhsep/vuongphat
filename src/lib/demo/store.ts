@@ -1,4 +1,7 @@
 import type {
+  Attendance,
+  AttendanceRow,
+  AttendanceSummary,
   Bom,
   BomItem,
   BomLine,
@@ -7,17 +10,25 @@ import type {
   CashRow,
   CashTransaction,
   DashboardData,
+  Employee,
   InventoryItem,
   Item,
   ItemType,
   MovementRow,
   MovementType,
+  PayrollAdjustment,
+  PayrollAdjustmentRow,
+  PayrollRow,
   ProductionOrder,
   ProductionRow,
+  Role,
   StockMovement,
   Supplier,
+  Task,
+  TaskRow,
+  TaskStatus,
 } from "@/lib/types";
-import { lastMonths, monthKey, todayISO } from "@/lib/format";
+import { currentPeriod, lastMonths, monthKey, periodBounds, todayISO } from "@/lib/format";
 
 type DemoState = {
   items: Item[];
@@ -26,6 +37,10 @@ type DemoState = {
   boms: (Bom & { items: BomItem[] })[];
   orders: ProductionOrder[];
   cash: CashTransaction[];
+  employees: Employee[];
+  tasks: Task[];
+  attendance: Attendance[];
+  adjustments: PayrollAdjustment[];
 };
 
 const DAY = 86_400_000;
@@ -225,7 +240,192 @@ function seed(): DemoState {
     addCash({ type: "chi", amount: 6_500_000, category: "Điện nước", description: "Hoá đơn điện nước", date: twentieth });
   });
 
-  return { items, suppliers, movements, boms, orders, cash };
+  const employees: Employee[] = [
+    {
+      id: "demo",
+      full_name: "Nguyễn Văn An",
+      email: "admin@vuongphat.vn",
+      phone: "0901 234 567",
+      address: "123 Xa Lộ Hà Nội, TP. Thủ Đức",
+      job_title: "Giám đốc điều hành",
+      date_of_birth: "1988-05-15",
+      start_date: "2023-01-01",
+      daily_wage: 650_000,
+      active: true,
+      role: "admin",
+      created_at: daysAgo(120),
+    },
+    {
+      id: "nv-002",
+      full_name: "Trần Thị Bình",
+      email: "binh.tran@vuongphat.vn",
+      phone: "0912 345 678",
+      address: "45 Lê Văn Việt, TP. Thủ Đức",
+      job_title: "Thủ kho chính",
+      date_of_birth: "1992-08-20",
+      start_date: "2023-03-15",
+      daily_wage: 350_000,
+      active: true,
+      role: "kho",
+      created_at: daysAgo(110),
+    },
+    {
+      id: "nv-003",
+      full_name: "Lê Hoàng Nam",
+      email: "nam.le@vuongphat.vn",
+      phone: "0987 654 321",
+      address: "78 Đỗ Xuân Hợp, Quận 9",
+      job_title: "Trưởng ca sản xuất",
+      date_of_birth: "1990-11-10",
+      start_date: "2023-02-01",
+      daily_wage: 420_000,
+      active: true,
+      role: "san_xuat",
+      created_at: daysAgo(120),
+    },
+    {
+      id: "nv-004",
+      full_name: "Phạm Thu Thảo",
+      email: "thao.pham@vuongphat.vn",
+      phone: "0933 888 999",
+      address: "12 Nguyễn Thị Định, Quận 2",
+      job_title: "Kế toán tổng hợp",
+      date_of_birth: "1995-03-25",
+      start_date: "2023-05-01",
+      daily_wage: 380_000,
+      active: true,
+      role: "ke_toan",
+      created_at: daysAgo(100),
+    },
+    {
+      id: "nv-005",
+      full_name: "Võ Minh Đức",
+      email: "duc.vo@vuongphat.vn",
+      phone: "0977 112 233",
+      address: "89 Tăng Nhơn Phú, TP. Thủ Đức",
+      job_title: "Công nhân đứng máy",
+      date_of_birth: "1997-09-05",
+      start_date: "2023-06-15",
+      daily_wage: 300_000,
+      active: true,
+      role: "san_xuat",
+      created_at: daysAgo(90),
+    },
+  ];
+
+  const tasks: Task[] = [
+    {
+      id: "task-001",
+      employee_id: "demo",
+      title: "Duyệt kế hoạch sản xuất tuần mới",
+      description: "Xem xét các lệnh sản xuất còn chờ và lượng tồn kho nguyên liệu.",
+      due_date: todayISO(),
+      status: "can_lam",
+      completed_at: null,
+      created_by: "demo",
+      created_at: daysAgo(1),
+    },
+    {
+      id: "task-002",
+      employee_id: "nv-002",
+      title: "Kiểm đếm tồn kho bột mì và bơ lạt",
+      description: "Đối chiếu số lượng thực tế với số liệu trên phần mềm Vương Phát ERP.",
+      due_date: todayISO(),
+      status: "hoan_thanh",
+      completed_at: nowISO(),
+      created_by: "demo",
+      created_at: daysAgo(2),
+    },
+    {
+      id: "task-003",
+      employee_id: "nv-003",
+      title: "Bảo dưỡng máy trộn bột ca sáng",
+      description: "Vệ sinh và kiểm tra dầu bôi trơn máy trộn số 1 và 2.",
+      due_date: todayISO(),
+      status: "can_lam",
+      completed_at: null,
+      created_by: "demo",
+      created_at: daysAgo(1),
+    },
+    {
+      id: "task-004",
+      employee_id: "nv-004",
+      title: "Đối chiếu sổ quỹ với sao kê tài khoản ngân hàng",
+      description: "Kiểm tra các khoản thu chi ngân hàng tháng hiện tại.",
+      due_date: todayISO(),
+      status: "can_lam",
+      completed_at: null,
+      created_by: "demo",
+      created_at: daysAgo(1),
+    },
+  ];
+
+  const attendance: Attendance[] = [];
+  const adjustments: PayrollAdjustment[] = [];
+
+  const curPeriod = currentPeriod();
+  const prevDate = new Date();
+  prevDate.setMonth(prevDate.getMonth() - 1);
+  const prevPeriod = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+
+  for (const emp of employees) {
+    for (let day = 1; day <= 22; day++) {
+      const dStr = String(day).padStart(2, "0");
+      attendance.push({
+        id: uid(),
+        employee_id: emp.id,
+        work_date: `${prevPeriod}-${dStr}`,
+        days: 1,
+        note: null,
+        created_by: "demo",
+        created_at: `${prevPeriod}-${dStr}T17:00:00.000Z`,
+      });
+    }
+
+    const nowDay = Math.min(new Date().getDate(), 20);
+    for (let day = 1; day <= nowDay; day++) {
+      const dStr = String(day).padStart(2, "0");
+      attendance.push({
+        id: uid(),
+        employee_id: emp.id,
+        work_date: `${curPeriod}-${dStr}`,
+        days: 1,
+        note: null,
+        created_by: "demo",
+        created_at: `${curPeriod}-${dStr}T17:00:00.000Z`,
+      });
+    }
+  }
+
+  adjustments.push({
+    id: uid(),
+    employee_id: "nv-003",
+    period: curPeriod,
+    amount: 500_000,
+    description: "Thưởng năng suất hoàn thành vượt kế hoạch",
+    created_by: "demo",
+    created_at: nowISO(),
+  });
+  adjustments.push({
+    id: uid(),
+    employee_id: "nv-002",
+    period: curPeriod,
+    amount: 300_000,
+    description: "Phụ cấp trách nhiệm quản lý kho",
+    created_by: "demo",
+    created_at: nowISO(),
+  });
+  adjustments.push({
+    id: uid(),
+    employee_id: "nv-005",
+    period: curPeriod,
+    amount: -500_000,
+    description: "Tạm ứng tiền mặt giữa kỳ",
+    created_by: "demo",
+    created_at: nowISO(),
+  });
+
+  return { items, suppliers, movements, boms, orders, cash, employees, tasks, attendance, adjustments };
 }
 
 const store = globalThis as unknown as { __vuongPhatDemo?: DemoState };
@@ -708,4 +908,292 @@ export function demoDashboard(): DashboardData {
     lowStockCount,
     monthly: Array.from(monthlyMap.values()),
   };
+}
+
+// --- Demo Nhân sự -----------------------------------------------------------
+
+export function demoEmployees(): Employee[] {
+  return db().employees.slice().sort((a, b) => a.full_name.localeCompare(b.full_name, "vi"));
+}
+
+export function demoCreateEmployee(input: {
+  fullName: string;
+  email: string;
+  role: Role;
+  phone?: string | null;
+  address?: string | null;
+  jobTitle?: string | null;
+  dob?: string | null;
+  startDate?: string | null;
+  dailyWage: number;
+}): Employee {
+  const state = db();
+  if (state.employees.some((e) => e.email?.toLowerCase() === input.email.toLowerCase())) {
+    throw new Error(`Email "${input.email}" đã được đăng ký.`);
+  }
+
+  const emp: Employee = {
+    id: uid(),
+    full_name: input.fullName,
+    email: input.email,
+    role: input.role,
+    phone: input.phone ?? null,
+    address: input.address ?? null,
+    job_title: input.jobTitle ?? null,
+    date_of_birth: input.dob ?? null,
+    start_date: input.startDate ?? null,
+    daily_wage: input.dailyWage,
+    active: true,
+    created_at: nowISO(),
+  };
+  state.employees.push(emp);
+  return emp;
+}
+
+export function demoUpdateEmployee(
+  id: string,
+  input: {
+    fullName: string;
+    role: Role;
+    phone?: string | null;
+    address?: string | null;
+    jobTitle?: string | null;
+    dob?: string | null;
+    startDate?: string | null;
+    dailyWage: number;
+    active: boolean;
+  },
+): void {
+  const state = db();
+  const emp = state.employees.find((e) => e.id === id);
+  if (!emp) throw new Error("Không tìm thấy nhân viên.");
+
+  emp.full_name = input.fullName;
+  emp.role = input.role;
+  emp.phone = input.phone ?? null;
+  emp.address = input.address ?? null;
+  emp.job_title = input.jobTitle ?? null;
+  emp.date_of_birth = input.dob ?? null;
+  emp.start_date = input.startDate ?? null;
+  emp.daily_wage = input.dailyWage;
+  emp.active = input.active;
+}
+
+export function demoSetEmployeeActive(id: string, active: boolean): void {
+  const state = db();
+  const emp = state.employees.find((e) => e.id === id);
+  if (!emp) throw new Error("Không tìm thấy nhân viên.");
+  emp.active = active;
+}
+
+export function demoChangeEmployeeEmail(id: string, email: string): void {
+  const state = db();
+  const emp = state.employees.find((e) => e.id === id);
+  if (!emp) throw new Error("Không tìm thấy nhân viên.");
+  if (state.employees.some((e) => e.id !== id && e.email?.toLowerCase() === email.toLowerCase())) {
+    throw new Error(`Email "${email}" đã được đăng ký.`);
+  }
+  emp.email = email;
+}
+
+export function demoTasks(employeeId?: string): TaskRow[] {
+  const state = db();
+  const empMap = new Map(state.employees.map((e) => [e.id, e.full_name]));
+
+  return state.tasks
+    .filter((task) => !employeeId || task.employee_id === employeeId)
+    .sort((a, b) => {
+      if (a.due_date === b.due_date) return b.created_at.localeCompare(a.created_at);
+      return b.due_date.localeCompare(a.due_date);
+    })
+    .map((task) => ({
+      ...task,
+      employee_name: empMap.get(task.employee_id) ?? "—",
+      created_by_name: task.created_by ? (empMap.get(task.created_by) ?? "Admin") : null,
+    }));
+}
+
+export function demoCreateTask(input: {
+  employeeId: string;
+  title: string;
+  description?: string | null;
+  dueDate: string;
+}): Task {
+  const state = db();
+  const task: Task = {
+    id: uid(),
+    employee_id: input.employeeId,
+    title: input.title,
+    description: input.description ?? null,
+    due_date: input.dueDate,
+    status: "can_lam",
+    completed_at: null,
+    created_by: "demo",
+    created_at: nowISO(),
+  };
+  state.tasks.push(task);
+  return task;
+}
+
+export function demoDeleteTask(id: string): void {
+  const state = db();
+  state.tasks = state.tasks.filter((t) => t.id !== id);
+}
+
+export function demoUpdateTaskStatus(
+  taskId: string,
+  status: TaskStatus,
+  employeeId?: string,
+): void {
+  const state = db();
+  const task = state.tasks.find(
+    (t) => t.id === taskId && (!employeeId || t.employee_id === employeeId),
+  );
+  if (!task) throw new Error("Không tìm thấy nhiệm vụ của bạn.");
+
+  task.status = status;
+  task.completed_at = status === "hoan_thanh" ? nowISO() : null;
+}
+
+export function demoAttendance(period?: string): AttendanceRow[] {
+  const state = db();
+  const empMap = new Map(state.employees.map((e) => [e.id, e.full_name]));
+
+  return state.attendance
+    .filter((att) => !period || att.work_date.startsWith(period))
+    .sort((a, b) => {
+      if (a.work_date === b.work_date) return b.created_at.localeCompare(a.created_at);
+      return b.work_date.localeCompare(a.work_date);
+    })
+    .map((att) => ({
+      ...att,
+      employee_name: empMap.get(att.employee_id) ?? "—",
+    }));
+}
+
+export function demoRecordAttendance(input: {
+  employeeId: string;
+  workDate: string;
+  days: number;
+  note?: string | null;
+}): void {
+  const state = db();
+  const existing = state.attendance.find(
+    (a) => a.employee_id === input.employeeId && a.work_date === input.workDate,
+  );
+  if (existing) {
+    existing.days = input.days;
+    existing.note = input.note ?? null;
+  } else {
+    state.attendance.push({
+      id: uid(),
+      employee_id: input.employeeId,
+      work_date: input.workDate,
+      days: input.days,
+      note: input.note ?? null,
+      created_by: "demo",
+      created_at: nowISO(),
+    });
+  }
+}
+
+export function demoDeleteAttendance(id: string): void {
+  const state = db();
+  state.attendance = state.attendance.filter((a) => a.id !== id);
+}
+
+export function demoAttendanceSummary(period: string): AttendanceSummary[] {
+  const state = db();
+  const map = new Map<string, number>();
+
+  for (const att of state.attendance) {
+    if (att.work_date.startsWith(period)) {
+      map.set(att.employee_id, (map.get(att.employee_id) ?? 0) + att.days);
+    }
+  }
+
+  return state.employees
+    .filter((e) => e.active)
+    .map((e) => ({
+      employee_id: e.id,
+      full_name: e.full_name,
+      job_title: e.job_title,
+      total_days: map.get(e.id) ?? 0,
+    }))
+    .sort((a, b) => a.full_name.localeCompare(b.full_name, "vi"));
+}
+
+export function demoPayroll(period: string): PayrollRow[] {
+  const state = db();
+  const attMap = new Map<string, number>();
+  for (const att of state.attendance) {
+    if (att.work_date.startsWith(period)) {
+      attMap.set(att.employee_id, (attMap.get(att.employee_id) ?? 0) + att.days);
+    }
+  }
+
+  const adjMap = new Map<string, number>();
+  for (const adj of state.adjustments) {
+    if (adj.period === period) {
+      adjMap.set(adj.employee_id, (adjMap.get(adj.employee_id) ?? 0) + adj.amount);
+    }
+  }
+
+  return state.employees
+    .filter((e) => e.active)
+    .map((e) => {
+      const total_days = attMap.get(e.id) ?? 0;
+      const base_salary = Math.round(total_days * e.daily_wage);
+      const adjustments = adjMap.get(e.id) ?? 0;
+      const net_salary = base_salary + adjustments;
+
+      return {
+        employee_id: e.id,
+        full_name: e.full_name,
+        job_title: e.job_title,
+        role: e.role,
+        total_days,
+        daily_wage: e.daily_wage,
+        base_salary,
+        adjustments,
+        net_salary,
+      };
+    })
+    .sort((a, b) => a.full_name.localeCompare(b.full_name, "vi"));
+}
+
+export function demoPayrollAdjustments(period?: string): PayrollAdjustmentRow[] {
+  const state = db();
+  const empMap = new Map(state.employees.map((e) => [e.id, e.full_name]));
+
+  return state.adjustments
+    .filter((adj) => !period || adj.period === period)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .map((adj) => ({
+      ...adj,
+      employee_name: empMap.get(adj.employee_id) ?? "—",
+    }));
+}
+
+export function demoAddPayrollAdjustment(input: {
+  employeeId: string;
+  period: string;
+  amount: number;
+  description?: string | null;
+}): void {
+  const state = db();
+  state.adjustments.push({
+    id: uid(),
+    employee_id: input.employeeId,
+    period: input.period,
+    amount: input.amount,
+    description: input.description ?? null,
+    created_by: "demo",
+    created_at: nowISO(),
+  });
+}
+
+export function demoDeletePayrollAdjustment(id: string): void {
+  const state = db();
+  state.adjustments = state.adjustments.filter((adj) => adj.id !== id);
 }
