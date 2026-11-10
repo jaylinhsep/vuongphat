@@ -132,11 +132,21 @@
 .print-table th,
 .print-table td {
   border: 1px solid #000;
-  padding: 5px 7px;
+  padding: 8px 10px;
 }
 .print-table th {
   background: #f0f0f0;
   font-weight: 600;
+}
+.print-table td.print-qty {
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+.print-table-wrap {
+  flex: 1 1 auto;
+}
+.print-table-wrap .print-table {
+  height: 100%;
 }
 .print-table tfoot td.print-total {
   border: 2px solid #000;
@@ -168,6 +178,9 @@
     max-width: none !important;
     padding: 0 !important;
     box-shadow: none !important;
+    min-height: 273mm;
+    display: flex;
+    flex-direction: column;
   }
   .print-table th {
     background: #f0f0f0 !important;

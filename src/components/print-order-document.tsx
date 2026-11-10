@@ -57,7 +57,7 @@ export function PrintOrderDocument({
         </div>
       </div>
 
-      <div className="print-sheet w-[210mm] max-w-full bg-white p-[14mm] text-black shadow-lg print:w-full print:max-w-none print:p-0 print:shadow-none">
+      <div className="print-sheet flex w-[210mm] min-h-[297mm] max-w-full flex-col bg-white p-[14mm] text-black shadow-lg print:w-full print:max-w-none print:p-0 print:shadow-none">
         <div className="flex items-start justify-between gap-4 border-b-2 border-black pb-3">
           <div>
             <p className="text-lg font-bold uppercase">Vương Phát</p>
@@ -117,53 +117,45 @@ export function PrintOrderDocument({
           </div>
         </div>
 
-        <h2 className="mt-6 mb-2 text-sm font-bold uppercase">
-          Định lượng nguyên liệu cần dùng
-        </h2>
         {bom ? (
           <>
-            <p className="mb-2 text-xs text-neutral-600">
-              Theo công thức BOM: {formatQuantity(bom.output_quantity)}{" "}
-              {bom.product_unit} thành phẩm / lô. Số lượng cần = định lượng ×{" "}
-              {formatQuantity(order.quantity)} / {formatQuantity(bom.output_quantity)}.
-            </p>
-            <table className="print-table w-full border-collapse text-sm">
-              <thead>
-                <tr>
-                  <th className="w-10">STT</th>
-                  <th className="text-left">Nguyên liệu</th>
-                  <th className="w-20">Mã</th>
-                  <th className="w-16">ĐVT</th>
-                  <th className="w-28 text-right">ĐL / đơn vị</th>
-                  <th className="w-32 text-right">Số lượng cần</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map((line, index) => (
-                  <tr key={line.id}>
-                    <td className="text-center">{index + 1}</td>
-                    <td>{line.material_name}</td>
-                    <td className="font-mono text-xs">{line.material_code}</td>
-                    <td className="text-center">{line.material_unit}</td>
-                    <td className="text-right">{formatQuantity(line.quantity)}</td>
-                    <td className="text-right font-semibold">
-                      {formatQuantity(line.needed)} {line.material_unit}
+            <div className="print-table-wrap mt-4">
+              <table className="print-table w-full border-collapse text-base">
+                <thead>
+                  <tr>
+                    <th className="w-10">STT</th>
+                    <th className="text-left">Nguyên liệu</th>
+                    <th className="w-24">Mã</th>
+                    <th className="w-20">ĐVT</th>
+                    <th className="w-44 text-right">Số lượng cần</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((line, index) => (
+                    <tr key={line.id}>
+                      <td className="text-center">{index + 1}</td>
+                      <td className="text-lg font-medium">{line.material_name}</td>
+                      <td className="font-mono text-sm">{line.material_code}</td>
+                      <td className="text-center text-lg">{line.material_unit}</td>
+                      <td className="print-qty text-right">
+                        {formatQuantity(line.needed)} {line.material_unit}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={5} className="print-total">
+                      TỔNG CỘNG SỐ LƯỢNG CẦN SẢN XUẤT (ĐẦU RA):{" "}
+                      <span className="print-total-qty">
+                        {formatQuantity(order.quantity)} {order.product_unit}
+                      </span>{" "}
+                      — {order.product_name}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={6} className="print-total">
-                    TỔNG CỘNG SỐ LƯỢNG CẦN SẢN XUẤT (ĐẦU RA):{" "}
-                    <span className="print-total-qty">
-                      {formatQuantity(order.quantity)} {order.product_unit}
-                    </span>{" "}
-                    — {order.product_name}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                </tfoot>
+              </table>
+            </div>
             {bom.note && (
               <p className="mt-2 text-xs text-neutral-600">
                 Ghi chú công thức: {bom.note}
@@ -177,7 +169,7 @@ export function PrintOrderDocument({
           </p>
         )}
 
-        <div className="mt-10 grid grid-cols-3 gap-6 text-center text-sm">
+        <div className="mt-auto grid grid-cols-3 gap-6 pt-10 text-center text-sm">
           <div>
             <p className="font-semibold">Người lập lệnh</p>
             <p className="text-xs text-neutral-600">(Ký, ghi rõ họ tên)</p>
