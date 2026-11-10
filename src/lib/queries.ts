@@ -4,6 +4,7 @@ import {
   demoAttendanceSummary,
   demoBoms,
   demoCash,
+  demoCustomerDebts,
   demoCustomers,
   demoDashboard,
   demoEmployees,
@@ -13,8 +14,11 @@ import {
   demoOrders,
   demoPayroll,
   demoPayrollAdjustments,
+  demoPurchaseOrder,
+  demoPurchaseOrders,
   demoSalesOrder,
   demoSalesOrders,
+  demoSupplierDebts,
   demoSuppliers,
   demoTasks,
 } from "@/lib/demo/store";
@@ -28,6 +32,7 @@ import type {
   CashFilter,
   CashRow,
   Customer,
+  CustomerDebtRow,
   DashboardData,
   Employee,
   InventoryItem,
@@ -37,10 +42,13 @@ import type {
   PayrollAdjustmentRow,
   PayrollRow,
   ProductionRow,
+  PurchaseOrderRow,
+  PurchaseOrderStatus,
   SalesOrderRow,
   SalesOrderStatus,
   StockMovement,
   Supplier,
+  SupplierDebtRow,
   TaskRow,
 } from "@/lib/types";
 
@@ -671,4 +679,217 @@ export async function getSalesOrder(id: string): Promise<SalesOrderRow | null> {
       item_unit: i.item?.unit ?? "—",
     })),
   };
+}
+
+// --- Mua hàng & Nhà cung cấp -----------------------------------------------
+
+type DbPurchaseOrderItem = {
+  id: string;
+  order_id: string;
+  item_id: string;
+  quantity: number | string;
+  unit_price: number | string;
+  total_price: number | string;
+  item: { name: string; code: string; unit: string } | null;
+};
+
+type DbPurchaseOrder = {
+  id: string;
+  code: string;
+  supplier_id: string;
+  order_date: string;
+  delivery_date: string | null;
+  status: PurchaseOrderStatus;
+  total_amount: number | string;
+  paid_amount: number | string;
+  payment_status: "chua_thanh_toan" | "thanh_toan_mot_phan" | "da_thanh_toan";
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+  supplier: { name: string; phone: string | null } | null;
+  items: DbPurchaseOrderItem[];
+};
+
+export async function getPurchaseOrders(
+  status?: PurchaseOrderStatus | "all",
+): Promise<PurchaseOrderRow[]> {
+  if (!isSupabaseConfigured()) return demoPurchaseOrders(status);
+
+  const supabase = await createSupabaseServerClient();
+  let query = supabase
+    .from("purchase_orders")
+    .select(
+      `*,
+       supplier:suppliers(name, phone),
+       items:purchase_order_items(*, item:items(name, code, unit))`,
+    )
+    .order("order_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (status && status !== "all") {
+    query = query.eq("status", status);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  return ((data ?? []) as unknown as DbPurchaseOrder[]).map((order) => ({
+    id: order.id,
+    code: order.code,
+    supplier_id: order.supplier_id,
+    order_date: order.order_date,
+    delivery_date: order.delivery_date,
+    status: order.status,
+    total_amount: num(order.total_amount),
+    paid_amount: num(order.paid_amount),
+    payment_status: order.payment_status,
+    note: order.note,
+    created_by: order.created_by,
+    created_at: order.created_at,
+    supplier_name: order.supplier?.name ?? "—",
+    supplier_phone: order.supplier?.phone ?? null,
+    items: (order.items ?? []).map((i) => ({
+      id: i.id,
+      order_id: i.order_id,
+      item_id: i.item_id,
+      quantity: num(i.quantity),
+      unit_price: num(i.unit_price),
+      total_price: num(i.total_price),
+      item_name: i.item?.name ?? "—",
+      item_code: i.item?.code ?? "—",
+      item_unit: i.item?.unit ?? "—",
+    })),
+  }));
+}
+
+export async function getPurchaseOrder(id: string): Promise<PurchaseOrderRow | null> {
+  if (!isSupabaseConfigured()) return demoPurchaseOrder(id);
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("purchase_orders")
+    .select(
+      `*,
+       supplier:suppliers(name, phone),
+       items:purchase_order_items(*, item:items(name, code, unit))`,
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+
+  const order = data as unknown as DbPurchaseOrder;
+  return {
+    id: order.id,
+    code: order.code,
+    supplier_id: order.supplier_id,
+    order_date: order.order_date,
+    delivery_date: order.delivery_date,
+    status: order.status,
+    total_amount: num(order.total_amount),
+    paid_amount: num(order.paid_amount),
+    payment_status: order.payment_status,
+    note: order.note,
+    created_by: order.created_by,
+    created_at: order.created_at,
+    supplier_name: order.supplier?.name ?? "—",
+    supplier_phone: order.supplier?.phone ?? null,
+    items: (order.items ?? []).map((i) => ({
+      id: i.id,
+      order_id: i.order_id,
+      item_id: i.item_id,
+      quantity: num(i.quantity),
+      unit_price: num(i.unit_price),
+      total_price: num(i.total_price),
+      item_name: i.item?.name ?? "—",
+      item_code: i.item?.code ?? "—",
+      item_unit: i.item?.unit ?? "—",
+    })),
+  };
+}
+
+// --- Công nợ ---------------------------------------------------------------
+
+export async function getCustomerDebts(): Promise<CustomerDebtRow[]> {
+  if (!isSupabaseConfigured()) return demoCustomerDebts();
+
+  const supabase = await createSupabaseServerClient();
+  const { data: customers, error: cErr } = await supabase
+    .from("customers")
+    .select("id, code, name, phone")
+    .order("name");
+  if (cErr) throw new Error(cErr.message);
+
+  const { data: orders, error: oErr } = await supabase
+    .from("sales_orders")
+    .select("customer_id, total_amount, paid_amount, status")
+    .neq("status", "huy");
+  if (oErr) throw new Error(oErr.message);
+
+  const statsMap = new Map<string, { totalSales: number; totalPaid: number }>();
+  for (const o of orders ?? []) {
+    const cur = statsMap.get(o.customer_id) ?? { totalSales: 0, totalPaid: 0 };
+    cur.totalSales += num(o.total_amount);
+    cur.totalPaid += num(o.paid_amount);
+    statsMap.set(o.customer_id, cur);
+  }
+
+  return (customers ?? [])
+    .map((c) => {
+      const stats = statsMap.get(c.id) ?? { totalSales: 0, totalPaid: 0 };
+      const debtAmount = Math.max(stats.totalSales - stats.totalPaid, 0);
+      return {
+        customer_id: c.id,
+        customer_code: c.code,
+        customer_name: c.name,
+        customer_phone: c.phone,
+        total_sales: stats.totalSales,
+        total_paid: stats.totalPaid,
+        debt_amount: debtAmount,
+      };
+    })
+    .filter((r) => r.total_sales > 0)
+    .sort((a, b) => b.debt_amount - a.debt_amount);
+}
+
+export async function getSupplierDebts(): Promise<SupplierDebtRow[]> {
+  if (!isSupabaseConfigured()) return demoSupplierDebts();
+
+  const supabase = await createSupabaseServerClient();
+  const { data: suppliers, error: sErr } = await supabase
+    .from("suppliers")
+    .select("id, name, phone")
+    .order("name");
+  if (sErr) throw new Error(sErr.message);
+
+  const { data: orders, error: oErr } = await supabase
+    .from("purchase_orders")
+    .select("supplier_id, total_amount, paid_amount, status")
+    .neq("status", "huy");
+  if (oErr) throw new Error(oErr.message);
+
+  const statsMap = new Map<string, { totalPurchases: number; totalPaid: number }>();
+  for (const o of orders ?? []) {
+    const cur = statsMap.get(o.supplier_id) ?? { totalPurchases: 0, totalPaid: 0 };
+    cur.totalPurchases += num(o.total_amount);
+    cur.totalPaid += num(o.paid_amount);
+    statsMap.set(o.supplier_id, cur);
+  }
+
+  return (suppliers ?? [])
+    .map((s) => {
+      const stats = statsMap.get(s.id) ?? { totalPurchases: 0, totalPaid: 0 };
+      const debtAmount = Math.max(stats.totalPurchases - stats.totalPaid, 0);
+      return {
+        supplier_id: s.id,
+        supplier_name: s.name,
+        supplier_phone: s.phone,
+        total_purchases: stats.totalPurchases,
+        total_paid: stats.totalPaid,
+        debt_amount: debtAmount,
+      };
+    })
+    .filter((r) => r.total_purchases > 0)
+    .sort((a, b) => b.debt_amount - a.debt_amount);
 }

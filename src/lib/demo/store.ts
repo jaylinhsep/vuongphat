@@ -10,6 +10,7 @@ import type {
   CashRow,
   CashTransaction,
   Customer,
+  CustomerDebtRow,
   DashboardData,
   Employee,
   InventoryItem,
@@ -24,6 +25,11 @@ import type {
   PayrollRow,
   ProductionOrder,
   ProductionRow,
+  PurchaseOrder,
+  PurchaseOrderItem,
+  PurchaseOrderItemRow,
+  PurchaseOrderRow,
+  PurchaseOrderStatus,
   Role,
   SalesOrder,
   SalesOrderItem,
@@ -32,6 +38,7 @@ import type {
   SalesOrderStatus,
   StockMovement,
   Supplier,
+  SupplierDebtRow,
   Task,
   TaskRow,
   TaskStatus,
@@ -52,6 +59,8 @@ type DemoState = {
   customers: Customer[];
   salesOrders: SalesOrder[];
   salesOrderItems: SalesOrderItem[];
+  purchaseOrders: PurchaseOrder[];
+  purchaseOrderItems: PurchaseOrderItem[];
 };
 
 const DAY = 86_400_000;
@@ -538,6 +547,56 @@ function seed(): DemoState {
     },
   ];
 
+  const purchaseOrders: PurchaseOrder[] = [
+    {
+      id: "po-001",
+      code: "DHN-261105-01",
+      supplier_id: "ncc-001",
+      order_date: dateDaysAgo(5),
+      delivery_date: dateDaysAgo(5),
+      status: "da_nhap_kho",
+      total_amount: 48_000_000,
+      paid_amount: 48_000_000,
+      payment_status: "da_thanh_toan",
+      note: "Nhập bột mì chất lượng cao",
+      created_by: "demo",
+      created_at: daysAgo(5),
+    },
+    {
+      id: "po-002",
+      code: "DHN-261108-02",
+      supplier_id: "ncc-002",
+      order_date: dateDaysAgo(2),
+      delivery_date: todayISO(),
+      status: "cho_nhap_kho",
+      total_amount: 25_000_000,
+      paid_amount: 10_000_000,
+      payment_status: "thanh_toan_mot_phan",
+      note: "Đã chuyển khoản cọc 10.000.000đ",
+      created_by: "demo",
+      created_at: daysAgo(2),
+    },
+  ];
+
+  const purchaseOrderItems: PurchaseOrderItem[] = [
+    {
+      id: uid(),
+      order_id: "po-001",
+      item_id: "nl-001",
+      quantity: 2000,
+      unit_price: 24_000,
+      total_price: 48_000_000,
+    },
+    {
+      id: uid(),
+      order_id: "po-002",
+      item_id: "nl-003",
+      quantity: 200,
+      unit_price: 125_000,
+      total_price: 25_000_000,
+    },
+  ];
+
   return {
     items,
     suppliers,
@@ -552,6 +611,8 @@ function seed(): DemoState {
     customers,
     salesOrders,
     salesOrderItems,
+    purchaseOrders,
+    purchaseOrderItems,
   };
 }
 
@@ -1571,4 +1632,237 @@ export function demoCancelSalesOrder(orderId: string): void {
     throw new Error("Không thể hủy đơn hàng đã xuất kho giao hàng.");
   }
   order.status = "huy";
+}
+
+// --- Demo Mua hàng ---------------------------------------------------------
+
+export function demoPurchaseOrders(
+  status?: PurchaseOrderStatus | "all",
+): PurchaseOrderRow[] {
+  const state = db();
+  const suppMap = new Map(state.suppliers.map((s) => [s.id, s]));
+  const itemMap = new Map(state.items.map((i) => [i.id, i]));
+
+  return state.purchaseOrders
+    .filter((o) => !status || status === "all" || o.status === status)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .map((order) => {
+      const supp = suppMap.get(order.supplier_id);
+      const items: PurchaseOrderItemRow[] = state.purchaseOrderItems
+        .filter((poi) => poi.order_id === order.id)
+        .map((poi) => {
+          const item = itemMap.get(poi.item_id);
+          return {
+            ...poi,
+            item_name: item?.name ?? "—",
+            item_code: item?.code ?? "—",
+            item_unit: item?.unit ?? "—",
+          };
+        });
+
+      return {
+        ...order,
+        supplier_name: supp?.name ?? "—",
+        supplier_phone: supp?.phone ?? null,
+        items,
+      };
+    });
+}
+
+export function demoPurchaseOrder(id: string): PurchaseOrderRow | null {
+  const orders = demoPurchaseOrders("all");
+  return orders.find((o) => o.id === id) ?? null;
+}
+
+export function demoCreatePurchaseOrder(input: {
+  supplierId: string;
+  orderDate?: string;
+  deliveryDate?: string | null;
+  note?: string | null;
+  items: { itemId: string; quantity: number; unitPrice: number }[];
+}): PurchaseOrder {
+  const state = db();
+  const supp = state.suppliers.find((s) => s.id === input.supplierId);
+  if (!supp) throw new Error("Nhà cung cấp không tồn tại.");
+  if (!input.items || input.items.length === 0) {
+    throw new Error("Đơn hàng phải có ít nhất một mặt hàng.");
+  }
+
+  const orderId = uid();
+  const totalAmount = input.items.reduce(
+    (sum, line) => sum + line.quantity * line.unitPrice,
+    0,
+  );
+
+  const orderCode = `DHN-${todayISO().replace(/-/g, "").slice(2)}-${Math.floor(
+    100 + Math.random() * 900,
+  )}`;
+
+  const order: PurchaseOrder = {
+    id: orderId,
+    code: orderCode,
+    supplier_id: input.supplierId,
+    order_date: input.orderDate || todayISO(),
+    delivery_date: input.deliveryDate || null,
+    status: "cho_nhap_kho",
+    total_amount: totalAmount,
+    paid_amount: 0,
+    payment_status: "chua_thanh_toan",
+    note: input.note || null,
+    created_by: "demo",
+    created_at: nowISO(),
+  };
+
+  state.purchaseOrders.push(order);
+
+  for (const line of input.items) {
+    state.purchaseOrderItems.push({
+      id: uid(),
+      order_id: orderId,
+      item_id: line.itemId,
+      quantity: line.quantity,
+      unit_price: line.unitPrice,
+      total_price: line.quantity * line.unitPrice,
+    });
+  }
+
+  return order;
+}
+
+export function demoConfirmPurchaseOrder(orderId: string): void {
+  const state = db();
+  const order = state.purchaseOrders.find((o) => o.id === orderId);
+  if (!order) throw new Error("Không tìm thấy đơn mua hàng.");
+  if (order.status !== "cho_nhap_kho") {
+    throw new Error("Đơn hàng này không ở trạng thái chờ nhập kho.");
+  }
+
+  const items = state.purchaseOrderItems.filter((i) => i.order_id === orderId);
+
+  // Add stock movements (nhap)
+  for (const line of items) {
+    state.movements.push({
+      id: uid(),
+      item_id: line.item_id,
+      type: "nhap",
+      quantity: line.quantity,
+      unit_price: line.unit_price,
+      supplier_id: order.supplier_id,
+      note: `Nhập kho theo đơn mua ${order.code}`,
+      reference_type: "purchase_order",
+      reference_id: order.id,
+      created_by: "demo",
+      created_at: nowISO(),
+    });
+  }
+
+  order.status = "da_nhap_kho";
+}
+
+export function demoPayPurchaseOrder(
+  orderId: string,
+  amount: number,
+  method: PaymentMethod = "tien_mat",
+  note?: string,
+): void {
+  const state = db();
+  const order = state.purchaseOrders.find((o) => o.id === orderId);
+  if (!order) throw new Error("Không tìm thấy đơn mua hàng.");
+  if (amount <= 0) throw new Error("Số tiền thanh toán phải lớn hơn 0.");
+
+  const newPaid = order.paid_amount + amount;
+  if (newPaid > order.total_amount) {
+    throw new Error("Số tiền thanh toán vượt quá giá trị đơn mua hàng.");
+  }
+
+  order.paid_amount = newPaid;
+  order.payment_status =
+    newPaid >= order.total_amount ? "da_thanh_toan" : "thanh_toan_mot_phan";
+
+  // Create cash transaction (chi)
+  demoCreateCash({
+    type: "chi",
+    amount,
+    method,
+    category: "Mua nguyên liệu",
+    description: note || `Chi thanh toán đơn mua ${order.code}`,
+    transactionDate: todayISO(),
+  });
+}
+
+export function demoCancelPurchaseOrder(orderId: string): void {
+  const state = db();
+  const order = state.purchaseOrders.find((o) => o.id === orderId);
+  if (!order) throw new Error("Không tìm thấy đơn mua hàng.");
+  if (order.status === "da_nhap_kho") {
+    throw new Error("Không thể hủy đơn hàng đã nhập kho.");
+  }
+  order.status = "huy";
+}
+
+// --- Demo Báo cáo Công nợ ---------------------------------------------------
+
+export function demoCustomerDebts(): CustomerDebtRow[] {
+  const state = db();
+  const map = new Map<
+    string,
+    { totalSales: number; totalPaid: number }
+  >();
+
+  for (const order of state.salesOrders) {
+    if (order.status === "huy") continue;
+    const current = map.get(order.customer_id) ?? { totalSales: 0, totalPaid: 0 };
+    current.totalSales += order.total_amount;
+    current.totalPaid += order.paid_amount;
+    map.set(order.customer_id, current);
+  }
+
+  return state.customers
+    .map((c) => {
+      const stats = map.get(c.id) ?? { totalSales: 0, totalPaid: 0 };
+      const debtAmount = Math.max(stats.totalSales - stats.totalPaid, 0);
+      return {
+        customer_id: c.id,
+        customer_code: c.code,
+        customer_name: c.name,
+        customer_phone: c.phone,
+        total_sales: stats.totalSales,
+        total_paid: stats.totalPaid,
+        debt_amount: debtAmount,
+      };
+    })
+    .filter((r) => r.total_sales > 0)
+    .sort((a, b) => b.debt_amount - a.debt_amount);
+}
+
+export function demoSupplierDebts(): SupplierDebtRow[] {
+  const state = db();
+  const map = new Map<
+    string,
+    { totalPurchases: number; totalPaid: number }
+  >();
+
+  for (const order of state.purchaseOrders) {
+    if (order.status === "huy") continue;
+    const current = map.get(order.supplier_id) ?? { totalPurchases: 0, totalPaid: 0 };
+    current.totalPurchases += order.total_amount;
+    current.totalPaid += order.paid_amount;
+    map.set(order.supplier_id, current);
+  }
+
+  return state.suppliers
+    .map((s) => {
+      const stats = map.get(s.id) ?? { totalPurchases: 0, totalPaid: 0 };
+      const debtAmount = Math.max(stats.totalPurchases - stats.totalPaid, 0);
+      return {
+        supplier_id: s.id,
+        supplier_name: s.name,
+        supplier_phone: s.phone,
+        total_purchases: stats.totalPurchases,
+        total_paid: stats.totalPaid,
+        debt_amount: debtAmount,
+      };
+    })
+    .filter((r) => r.total_purchases > 0)
+    .sort((a, b) => b.debt_amount - a.debt_amount);
 }

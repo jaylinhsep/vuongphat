@@ -286,3 +286,64 @@ export type SalesOrderRow = SalesOrder & {
   customer_phone: string | null;
   items: SalesOrderItemRow[];
 };
+
+// --- Mua hàng & Nhà cung cấp -----------------------------------------------
+
+export type PurchaseOrderStatus = "cho_nhap_kho" | "da_nhap_kho" | "huy";
+
+export type PurchaseOrderItem = {
+  id: string;
+  order_id: string;
+  item_id: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+};
+
+export type PurchaseOrderItemRow = PurchaseOrderItem & {
+  item_name: string;
+  item_code: string;
+  item_unit: string;
+};
+
+export type PurchaseOrder = {
+  id: string;
+  code: string;
+  supplier_id: string;
+  order_date: string;
+  delivery_date: string | null;
+  status: PurchaseOrderStatus;
+  total_amount: number;
+  paid_amount: number;
+  payment_status: PaymentStatus;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type PurchaseOrderRow = PurchaseOrder & {
+  supplier_name: string;
+  supplier_phone: string | null;
+  items: PurchaseOrderItemRow[];
+};
+
+// --- Quản lý Công nợ --------------------------------------------------------
+
+export type CustomerDebtRow = {
+  customer_id: string;
+  customer_code: string;
+  customer_name: string;
+  customer_phone: string | null;
+  total_sales: number;
+  total_paid: number;
+  debt_amount: number;
+};
+
+export type SupplierDebtRow = {
+  supplier_id: string;
+  supplier_name: string;
+  supplier_phone: string | null;
+  total_purchases: number;
+  total_paid: number;
+  debt_amount: number;
+};

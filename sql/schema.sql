@@ -975,3 +975,168 @@ $$;
 
 grant execute on function public.confirm_sales_order(uuid) to authenticated;
 grant execute on function public.pay_sales_order(uuid, numeric, public.payment_method, text) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 12. Mua hàng (Purchase Orders)
+-- ---------------------------------------------------------------------------
+do $$ begin
+  create type public.purchase_order_status as enum ('cho_nhap_kho', 'da_nhap_kho', 'huy');
+exception when duplicate_object then null; end $$;
+
+create table if not exists public.purchase_orders (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique default (
+    'DHN-' || to_char(now(), 'YYMMDD') || '-' ||
+    upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 5))
+  ),
+  supplier_id uuid not null references public.suppliers (id) on delete restrict,
+  order_date date not null default current_date,
+  delivery_date date,
+  status public.purchase_order_status not null default 'cho_nhap_kho',
+  total_amount numeric(14, 2) not null default 0 check (total_amount >= 0),
+  paid_amount numeric(14, 2) not null default 0 check (paid_amount >= 0),
+  payment_status public.payment_status not null default 'chua_thanh_toan',
+  note text,
+  created_by uuid references public.profiles (id) on delete set null default auth.uid(),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.purchase_order_items (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references public.purchase_orders (id) on delete cascade,
+  item_id uuid not null references public.items (id) on delete restrict,
+  quantity numeric(14, 3) not null check (quantity > 0),
+  unit_price numeric(14, 2) not null default 0 check (unit_price >= 0),
+  total_price numeric(14, 2) not null default 0 check (total_price >= 0),
+  unique (order_id, item_id)
+);
+
+create index if not exists purchase_orders_supplier_idx on public.purchase_orders (supplier_id, order_date desc);
+create index if not exists purchase_order_items_order_idx on public.purchase_order_items (order_id);
+
+alter table public.purchase_orders enable row level security;
+alter table public.purchase_order_items enable row level security;
+
+-- Policies
+drop policy if exists "purchase_orders_select" on public.purchase_orders;
+create policy "purchase_orders_select" on public.purchase_orders
+  for select to authenticated using (true);
+
+drop policy if exists "purchase_orders_write" on public.purchase_orders;
+create policy "purchase_orders_write" on public.purchase_orders
+  for all to authenticated
+  using (public.my_role() in ('admin', 'kho', 'ke_toan'))
+  with check (public.my_role() in ('admin', 'kho', 'ke_toan'));
+
+drop policy if exists "purchase_order_items_select" on public.purchase_order_items;
+create policy "purchase_order_items_select" on public.purchase_order_items
+  for select to authenticated using (true);
+
+drop policy if exists "purchase_order_items_write" on public.purchase_order_items;
+create policy "purchase_order_items_write" on public.purchase_order_items
+  for all to authenticated
+  using (public.my_role() in ('admin', 'kho', 'ke_toan'))
+  with check (public.my_role() in ('admin', 'kho', 'ke_toan'));
+
+-- RPC Xác nhận nhập kho cho đơn mua
+create or replace function public.confirm_purchase_order(p_order_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_order public.purchase_orders;
+  v_item record;
+begin
+  if public.my_role() not in ('admin', 'kho', 'ke_toan') then
+    raise exception 'Bạn không có quyền xác nhận nhập kho';
+  end if;
+
+  select * into v_order from public.purchase_orders where id = p_order_id for update;
+  if not found then
+    raise exception 'Không tìm thấy đơn mua hàng';
+  end if;
+
+  if v_order.status <> 'cho_nhap_kho' then
+    raise exception 'Đơn hàng này không ở trạng thái chờ nhập kho';
+  end if;
+
+  for v_item in
+    select poi.item_id, poi.quantity, poi.unit_price
+    from public.purchase_order_items poi
+    where poi.order_id = p_order_id
+  loop
+    -- Ghi phiếu nhập kho
+    insert into public.stock_movements
+      (item_id, type, quantity, unit_price, supplier_id, note, reference_type, reference_id, created_by)
+    values
+      (v_item.item_id, 'nhap', v_item.quantity, v_item.unit_price, v_order.supplier_id,
+       'Nhập kho theo đơn mua ' || v_order.code,
+       'purchase_order', v_order.id, auth.uid());
+  end loop;
+
+  update public.purchase_orders
+  set status = 'da_nhap_kho'
+  where id = p_order_id;
+end;
+$$;
+
+-- RPC Thanh toán tiền mua hàng
+create or replace function public.pay_purchase_order(
+  p_order_id uuid,
+  p_amount numeric,
+  p_method public.payment_method default 'tien_mat',
+  p_note text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_order public.purchase_orders;
+  v_new_paid numeric;
+  v_status public.payment_status;
+begin
+  if public.my_role() not in ('admin', 'ke_toan') then
+    raise exception 'Bạn không có quyền thanh toán đơn mua hàng';
+  end if;
+
+  if p_amount <= 0 then
+    raise exception 'Số tiền thanh toán phải lớn hơn 0';
+  end if;
+
+  select * into v_order from public.purchase_orders where id = p_order_id for update;
+  if not found then
+    raise exception 'Không tìm thấy đơn mua hàng';
+  end if;
+
+  v_new_paid := v_order.paid_amount + p_amount;
+  if v_new_paid > v_order.total_amount then
+    raise exception 'Số tiền thanh toán vượt quá giá trị đơn mua hàng';
+  end if;
+
+  if v_new_paid >= v_order.total_amount then
+    v_status := 'da_thanh_toan';
+  else
+    v_status := 'thanh_toan_mot_phan';
+  end if;
+
+  update public.purchase_orders
+  set paid_amount = v_new_paid,
+      payment_status = v_status
+  where id = p_order_id;
+
+  -- Ghi nhận phiếu chi vào sổ quỹ
+  insert into public.cash_transactions
+    (type, amount, method, category, description, transaction_date, reference_type, reference_id, created_by)
+  values
+    ('chi', p_amount, p_method, 'Mua nguyên liệu',
+     coalesce(p_note, 'Chi thanh toán đơn mua ' || v_order.code),
+     current_date, 'purchase_order', v_order.id, auth.uid());
+end;
+$$;
+
+grant execute on function public.confirm_purchase_order(uuid) to authenticated;
+grant execute on function public.pay_purchase_order(uuid, numeric, public.payment_method, text) to authenticated;

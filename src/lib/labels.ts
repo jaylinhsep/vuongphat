@@ -5,6 +5,7 @@ import type {
   PaymentMethod,
   PaymentStatus,
   ProductionStatus,
+  PurchaseOrderStatus,
   Role,
   SalesOrderStatus,
   TaskStatus,
@@ -61,6 +62,12 @@ export const SALES_ORDER_STATUS_LABELS: Record<SalesOrderStatus, string> = {
   huy: "Đã hủy",
 };
 
+export const PURCHASE_ORDER_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
+  cho_nhap_kho: "Chờ nhập kho",
+  da_nhap_kho: "Đã nhập kho",
+  huy: "Đã hủy",
+};
+
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   chua_thanh_toan: "Chưa thanh toán",
   thanh_toan_mot_phan: "Thanh toán 1 phần",
@@ -96,5 +103,7 @@ export const CAN_ACCESS = {
   nhanSu: (role: Role) => role === "admin",
   banHang: (role: Role) => role === "admin" || role === "ke_toan" || role === "kho",
   banHangWrite: (role: Role) => role === "admin" || role === "ke_toan",
+  muaHang: (role: Role) => role === "admin" || role === "kho" || role === "ke_toan",
+  muaHangWrite: (role: Role) => role === "admin" || role === "kho" || role === "ke_toan",
   myTasks: () => true,
 } as const;

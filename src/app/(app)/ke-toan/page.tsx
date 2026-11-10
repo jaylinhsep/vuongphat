@@ -86,6 +86,11 @@ export default async function KeToanPage({
         title="Sổ quỹ thu chi"
         description="Theo dõi mọi dòng tiền vào/ra và xuất báo cáo Excel cho nội bộ hoặc cơ quan thuế."
       >
+        <Button asChild variant="outline">
+          <Link href="/ke-toan/cong-no">
+            <ScaleIcon /> Quản lý công nợ
+          </Link>
+        </Button>
         <Button asChild>
           <a href={exportHref}>
             <DownloadIcon /> Xuất Excel

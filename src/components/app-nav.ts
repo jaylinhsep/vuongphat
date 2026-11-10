@@ -8,7 +8,9 @@ import {
   FlaskConical,
   LayoutDashboard,
   ListTodo,
+  Scale,
   ShoppingCart,
+  Truck,
   Users,
   UsersRound,
   Wallet,
@@ -89,6 +91,17 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    title: "Mua hàng",
+    items: [
+      {
+        href: "/mua-hang",
+        label: "Đơn mua hàng",
+        icon: Truck,
+        allowed: CAN_ACCESS.muaHang,
+      },
+    ],
+  },
+  {
     title: "Sản xuất",
     items: [
       {
@@ -112,6 +125,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/ke-toan",
         label: "Sổ quỹ thu chi",
         icon: Wallet,
+        allowed: CAN_ACCESS.keToan,
+      },
+      {
+        href: "/ke-toan/cong-no",
+        label: "Quản lý công nợ",
+        icon: Scale,
         allowed: CAN_ACCESS.keToan,
       },
     ],
