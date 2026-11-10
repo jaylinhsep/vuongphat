@@ -31,9 +31,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { initialFormState } from "@/lib/form-state";
 import { ITEM_TYPE_LABELS } from "@/lib/labels";
-import type { Item, ItemType } from "@/lib/types";
+import type { InventoryItem, ItemType } from "@/lib/types";
 
-export function ItemFormDialog({ item }: { item?: Item }) {
+export function ItemFormDialog({ item }: { item?: InventoryItem }) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<ItemType>(item?.type ?? "nguyen_lieu");
   const formRef = useRef<HTMLFormElement>(null);
@@ -76,7 +76,7 @@ export function ItemFormDialog({ item }: { item?: Item }) {
           <DialogTitle>{item ? "Sửa hàng hóa" : "Thêm hàng hóa"}</DialogTitle>
           <DialogDescription>
             {item
-              ? "Cập nhật mã, tên, đơn vị tính và định mức của hàng hóa."
+              ? "Cập nhật thông tin hàng hóa và số lượng tồn kho hiện tại."
               : "Khai báo nguyên liệu hoặc thành phẩm dùng trong kho và sản xuất."}
           </DialogDescription>
         </DialogHeader>
@@ -144,6 +144,20 @@ export function ItemFormDialog({ item }: { item?: Item }) {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="item-on-hand">Tồn kho hiện tại</Label>
+              <Input
+                id="item-on-hand"
+                name="on_hand"
+                type="number"
+                min={0}
+                step="0.001"
+                defaultValue={item?.on_hand ?? 0}
+              />
+              <p className="text-xs text-muted-foreground">
+                Số lượng thực tế đang có trong kho.
+              </p>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="item-min-stock">Tồn tối thiểu</Label>
               <Input
                 id="item-min-stock"
@@ -153,6 +167,9 @@ export function ItemFormDialog({ item }: { item?: Item }) {
                 step="0.001"
                 defaultValue={item?.min_stock ?? 0}
               />
+              <p className="text-xs text-muted-foreground">
+                Ngưỡng cảnh báo khi tồn xuống thấp.
+              </p>
             </div>
           </div>
           <DialogFooter>

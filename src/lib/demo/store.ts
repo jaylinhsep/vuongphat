@@ -332,6 +332,31 @@ export function demoCreateMovement(input: {
   });
 }
 
+function applyStockTarget(
+  state: DemoState,
+  itemId: string,
+  target: number,
+  unitPrice: number,
+  note: string,
+): void {
+  const current = onHand(state, itemId);
+  const delta = Math.round((target - current) * 1000) / 1000;
+  if (delta === 0) return;
+  state.movements.push({
+    id: uid(),
+    item_id: itemId,
+    type: "dieu_chinh",
+    quantity: delta,
+    unit_price: unitPrice,
+    supplier_id: null,
+    note,
+    reference_type: null,
+    reference_id: null,
+    created_by: null,
+    created_at: nowISO(),
+  });
+}
+
 export function demoCreateItem(input: {
   code: string;
   name: string;
@@ -339,14 +364,16 @@ export function demoCreateItem(input: {
   type: ItemType;
   unitPrice: number;
   minStock: number;
+  onHand?: number;
 }): void {
   const state = db();
   const code = input.code.trim().toUpperCase();
   if (state.items.some((item) => item.code.toLowerCase() === code.toLowerCase())) {
     throw new Error(`Mã hàng "${code}" đã tồn tại`);
   }
+  const id = uid();
   state.items.push({
-    id: uid(),
+    id,
     code,
     name: input.name.trim(),
     unit: input.unit.trim(),
@@ -355,6 +382,7 @@ export function demoCreateItem(input: {
     min_stock: input.minStock || 0,
     created_at: nowISO(),
   });
+  applyStockTarget(state, id, input.onHand ?? 0, input.unitPrice || 0, "Nhập tồn kho đầu kỳ");
 }
 
 export function demoUpdateItem(input: {
@@ -365,6 +393,7 @@ export function demoUpdateItem(input: {
   type: ItemType;
   unitPrice: number;
   minStock: number;
+  onHand?: number;
 }): void {
   const state = db();
   const item = state.items.find((entry) => entry.id === input.id);
@@ -383,6 +412,9 @@ export function demoUpdateItem(input: {
   item.type = input.type;
   item.unit_price = input.unitPrice || 0;
   item.min_stock = input.minStock || 0;
+  if (input.onHand !== undefined) {
+    applyStockTarget(state, item.id, input.onHand, item.unit_price, "Điều chỉnh tồn kho");
+  }
 }
 
 export function demoCreateSupplier(input: { name: string; phone?: string; note?: string }): void {

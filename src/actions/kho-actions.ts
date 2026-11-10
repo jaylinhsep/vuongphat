@@ -31,6 +31,43 @@ function refreshKho() {
   revalidatePath("/kho/danh-muc");
 }
 
+type SupabaseServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
+
+// Đưa tồn kho về đúng giá trị mong muốn bằng phiếu điều chỉnh phần chênh lệch.
+async function setItemStock(
+  supabase: SupabaseServerClient,
+  itemId: string,
+  target: number,
+  unitPrice: number,
+  note: string,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("item_stock")
+    .select("on_hand")
+    .eq("id", itemId)
+    .single();
+  if (error) throw new Error(error.message);
+  const current = Number(data?.on_hand ?? 0);
+  const delta = Math.round((target - current) * 1000) / 1000;
+  if (delta === 0) return;
+  const { error: movementError } = await supabase.rpc("create_stock_movement", {
+    p_item_id: itemId,
+    p_type: "dieu_chinh",
+    p_quantity: delta,
+    p_unit_price: unitPrice,
+    p_supplier_id: null,
+    p_note: note,
+  });
+  if (movementError) throw new Error(movementError.message);
+}
+
+function parseStockTarget(formData: FormData): { value: number } | { error: string } {
+  const raw = parseNumber(formData.get("on_hand"));
+  if (!Number.isFinite(raw)) return { value: 0 };
+  if (raw < 0) return { error: "Tồn kho hiện tại không được âm." };
+  return { value: raw };
+}
+
 export async function createMovementAction(
   _prev: FormState,
   formData: FormData,
@@ -109,6 +146,9 @@ export async function createItemAction(
       return { status: "error", message: "Loại hàng hóa không hợp lệ." };
     }
 
+    const stock = parseStockTarget(formData);
+    if ("error" in stock) return { status: "error", message: stock.error };
+
     const payload = {
       code,
       name,
@@ -116,25 +156,39 @@ export async function createItemAction(
       type,
       unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
       minStock: Number.isFinite(minStock) ? minStock : 0,
+      onHand: stock.value,
     };
 
     if (!isSupabaseConfigured()) {
       demoCreateItem(payload);
     } else {
       const supabase = await createSupabaseServerClient();
-      const { error } = await supabase.from("items").insert({
-        code: payload.code,
-        name: payload.name,
-        unit: payload.unit,
-        type: payload.type,
-        unit_price: payload.unitPrice,
-        min_stock: payload.minStock,
-      });
+      const { data, error } = await supabase
+        .from("items")
+        .insert({
+          code: payload.code,
+          name: payload.name,
+          unit: payload.unit,
+          type: payload.type,
+          unit_price: payload.unitPrice,
+          min_stock: payload.minStock,
+        })
+        .select("id")
+        .single();
       if (error) {
         if (error.code === "23505") {
           return { status: "error", message: `Mã hàng "${code}" đã tồn tại.` };
         }
         throw new Error(error.message);
+      }
+      if (payload.onHand !== 0) {
+        await setItemStock(
+          supabase,
+          data.id,
+          payload.onHand,
+          payload.unitPrice,
+          "Nhập tồn kho đầu kỳ",
+        );
       }
     }
 
@@ -170,6 +224,9 @@ export async function updateItemAction(
       return { status: "error", message: "Loại hàng hóa không hợp lệ." };
     }
 
+    const stock = parseStockTarget(formData);
+    if ("error" in stock) return { status: "error", message: stock.error };
+
     const payload = {
       id,
       code,
@@ -178,6 +235,7 @@ export async function updateItemAction(
       type,
       unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
       minStock: Number.isFinite(minStock) ? minStock : 0,
+      onHand: stock.value,
     };
 
     if (!isSupabaseConfigured()) {
@@ -201,6 +259,13 @@ export async function updateItemAction(
         }
         throw new Error(error.message);
       }
+      await setItemStock(
+        supabase,
+        id,
+        payload.onHand,
+        payload.unitPrice,
+        "Điều chỉnh tồn kho",
+      );
     }
 
     refreshKho();
