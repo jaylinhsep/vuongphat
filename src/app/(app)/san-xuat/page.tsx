@@ -4,6 +4,7 @@ import {
   ClockIcon,
   FactoryIcon,
   FlaskConicalIcon,
+  PrinterIcon,
 } from "lucide-react";
 import { ConfirmOrderButton } from "@/components/forms/confirm-order-button";
 import { ProductionOrderDialog } from "@/components/forms/production-order-form";
@@ -103,6 +104,7 @@ export default async function SanXuatPage() {
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Hoàn thành lúc</TableHead>
                   <TableHead>Ghi chú</TableHead>
+                  <TableHead className="text-center">In lệnh</TableHead>
                   <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
@@ -110,7 +112,7 @@ export default async function SanXuatPage() {
                 {orders.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={8}
+                      colSpan={9}
                       className="py-10 text-center text-sm text-muted-foreground"
                     >
                       Chưa có lệnh sản xuất nào.
@@ -154,6 +156,17 @@ export default async function SanXuatPage() {
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate text-muted-foreground">
                           {order.note ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button asChild size="sm" variant="outline">
+                            <a
+                              href={`/san-xuat/in-lenh/${order.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <PrinterIcon /> In lệnh
+                            </a>
+                          </Button>
                         </TableCell>
                         <TableCell className="text-right">
                           {order.status === "cho_xac_nhan" ? (
