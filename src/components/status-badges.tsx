@@ -3,14 +3,19 @@ import {
   CASH_TYPE_LABELS,
   ITEM_TYPE_LABELS,
   MOVEMENT_TYPE_LABELS,
+  PAYMENT_STATUS_LABELS,
   PRODUCTION_STATUS_LABELS,
+  SALES_ORDER_STATUS_LABELS,
   TASK_STATUS_LABELS,
 } from "@/lib/labels";
 import type {
   CashType,
   ItemType,
   MovementType,
+  PaymentMethod,
+  PaymentStatus,
   ProductionStatus,
+  SalesOrderStatus,
   TaskStatus,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -93,6 +98,40 @@ export function TaskStatusBadge({ status }: { status: TaskStatus }) {
       className={cn("font-normal", TASK_STATUS_TONE[status])}
     >
       {TASK_STATUS_LABELS[status]}
+    </Badge>
+  );
+}
+
+const SALES_ORDER_TONE: Record<SalesOrderStatus, string> = {
+  cho_xac_nhan: "bg-amber-100 text-amber-700 border-amber-200",
+  da_giao: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  huy: "bg-slate-100 text-slate-600 border-slate-200",
+};
+
+export function SalesOrderStatusBadge({ status }: { status: SalesOrderStatus }) {
+  return (
+    <Badge
+      variant="outline"
+      className={cn("font-normal", SALES_ORDER_TONE[status])}
+    >
+      {SALES_ORDER_STATUS_LABELS[status]}
+    </Badge>
+  );
+}
+
+const PAYMENT_TONE: Record<PaymentStatus, string> = {
+  chua_thanh_toan: "bg-rose-100 text-rose-700 border-rose-200",
+  thanh_toan_mot_phan: "bg-amber-100 text-amber-700 border-amber-200",
+  da_thanh_toan: "bg-emerald-100 text-emerald-700 border-emerald-200",
+};
+
+export function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
+  return (
+    <Badge
+      variant="outline"
+      className={cn("font-normal", PAYMENT_TONE[status])}
+    >
+      {PAYMENT_STATUS_LABELS[status]}
     </Badge>
   );
 }

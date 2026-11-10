@@ -4,6 +4,7 @@ export type FormState = {
 };
 
 export const initialFormState: FormState = { status: "idle" };
+export const INITIAL_FORM_STATE = initialFormState;
 
 export function errorState(error: unknown, fallback = "Đã có lỗi xảy ra"): FormState {
   const message = error instanceof Error ? error.message : fallback;

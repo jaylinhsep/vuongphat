@@ -9,6 +9,7 @@ import type {
   CashFilter,
   CashRow,
   CashTransaction,
+  Customer,
   DashboardData,
   Employee,
   InventoryItem,
@@ -16,12 +17,19 @@ import type {
   ItemType,
   MovementRow,
   MovementType,
+  PaymentMethod,
+  PaymentStatus,
   PayrollAdjustment,
   PayrollAdjustmentRow,
   PayrollRow,
   ProductionOrder,
   ProductionRow,
   Role,
+  SalesOrder,
+  SalesOrderItem,
+  SalesOrderItemRow,
+  SalesOrderRow,
+  SalesOrderStatus,
   StockMovement,
   Supplier,
   Task,
@@ -41,6 +49,9 @@ type DemoState = {
   tasks: Task[];
   attendance: Attendance[];
   adjustments: PayrollAdjustment[];
+  customers: Customer[];
+  salesOrders: SalesOrder[];
+  salesOrderItems: SalesOrderItem[];
 };
 
 const DAY = 86_400_000;
@@ -425,7 +436,123 @@ function seed(): DemoState {
     created_at: nowISO(),
   });
 
-  return { items, suppliers, movements, boms, orders, cash, employees, tasks, attendance, adjustments };
+  const customers: Customer[] = [
+    {
+      id: "kh-001",
+      code: "KH001",
+      name: "Chuỗi Cửa Hàng Bánh ABC",
+      phone: "0938 111 222",
+      address: "150 Nguyễn Trãi, Quận 1, TP.HCM",
+      note: "Đại lý phân phối bánh mì bơ",
+      created_at: daysAgo(60),
+    },
+    {
+      id: "kh-002",
+      code: "KH002",
+      name: "Tiệm Trà & Cafe Hướng Dương",
+      phone: "0909 333 555",
+      address: "24 Lê Duẩn, Quận 1, TP.HCM",
+      note: "Đơn đặt bánh kem sự kiện",
+      created_at: daysAgo(45),
+    },
+    {
+      id: "kh-003",
+      code: "KH003",
+      name: "Siêu thị Mini Sài Gòn Mart",
+      phone: "0918 777 999",
+      address: "88 Võ Thị Sáu, Quận 3, TP.HCM",
+      note: "Giao hàng vào sáng sớm",
+      created_at: daysAgo(30),
+    },
+  ];
+
+  const salesOrders: SalesOrder[] = [
+    {
+      id: "so-001",
+      code: "DHB-261108-01",
+      customer_id: "kh-001",
+      order_date: dateDaysAgo(2),
+      delivery_date: dateDaysAgo(2),
+      status: "da_giao",
+      total_amount: 15_000_000,
+      paid_amount: 15_000_000,
+      payment_status: "da_thanh_toan",
+      note: "Giao tại kho chi nhánh Quận 1",
+      created_by: "demo",
+      created_at: daysAgo(2),
+    },
+    {
+      id: "so-002",
+      code: "DHB-261109-02",
+      customer_id: "kh-002",
+      order_date: dateDaysAgo(1),
+      delivery_date: todayISO(),
+      status: "cho_xac_nhan",
+      total_amount: 4_400_000,
+      paid_amount: 0,
+      payment_status: "chua_thanh_toan",
+      note: "Bánh kem phục vụ tiệc sinh nhật",
+      created_by: "demo",
+      created_at: daysAgo(1),
+    },
+    {
+      id: "so-003",
+      code: "DHB-261110-03",
+      customer_id: "kh-003",
+      order_date: todayISO(),
+      delivery_date: todayISO(),
+      status: "cho_xac_nhan",
+      total_amount: 7_500_000,
+      paid_amount: 3_000_000,
+      payment_status: "thanh_toan_mot_phan",
+      note: "Đã cọc 3.000.000đ tiền mặt",
+      created_by: "demo",
+      created_at: nowISO(),
+    },
+  ];
+
+  const salesOrderItems: SalesOrderItem[] = [
+    {
+      id: uid(),
+      order_id: "so-001",
+      item_id: "tp-001",
+      quantity: 1000,
+      unit_price: 15_000,
+      total_price: 15_000_000,
+    },
+    {
+      id: uid(),
+      order_id: "so-002",
+      item_id: "tp-002",
+      quantity: 20,
+      unit_price: 220_000,
+      total_price: 4_400_000,
+    },
+    {
+      id: uid(),
+      order_id: "so-003",
+      item_id: "tp-001",
+      quantity: 500,
+      unit_price: 15_000,
+      total_price: 7_500_000,
+    },
+  ];
+
+  return {
+    items,
+    suppliers,
+    movements,
+    boms,
+    orders,
+    cash,
+    employees,
+    tasks,
+    attendance,
+    adjustments,
+    customers,
+    salesOrders,
+    salesOrderItems,
+  };
 }
 
 const store = globalThis as unknown as { __vuongPhatDemo?: DemoState };
@@ -1196,4 +1323,252 @@ export function demoAddPayrollAdjustment(input: {
 export function demoDeletePayrollAdjustment(id: string): void {
   const state = db();
   state.adjustments = state.adjustments.filter((adj) => adj.id !== id);
+}
+
+// --- Demo Bán hàng & Khách hàng --------------------------------------------
+
+export function demoCustomers(search?: string): Customer[] {
+  const state = db();
+  const keyword = search?.trim().toLowerCase();
+  return state.customers
+    .filter((c) => {
+      if (!keyword) return true;
+      return (
+        c.name.toLowerCase().includes(keyword) ||
+        c.code.toLowerCase().includes(keyword) ||
+        (c.phone && c.phone.includes(keyword))
+      );
+    })
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+}
+
+export function demoCreateCustomer(input: {
+  code?: string;
+  name: string;
+  phone?: string | null;
+  address?: string | null;
+  note?: string | null;
+}): Customer {
+  const state = db();
+  const code =
+    input.code?.trim().toUpperCase() ||
+    `KH${Math.floor(1000 + Math.random() * 9000)}`;
+
+  if (state.customers.some((c) => c.code.toLowerCase() === code.toLowerCase())) {
+    throw new Error(`Mã khách hàng "${code}" đã tồn tại.`);
+  }
+
+  const customer: Customer = {
+    id: uid(),
+    code,
+    name: input.name.trim(),
+    phone: input.phone?.trim() || null,
+    address: input.address?.trim() || null,
+    note: input.note?.trim() || null,
+    created_at: nowISO(),
+  };
+
+  state.customers.push(customer);
+  return customer;
+}
+
+export function demoUpdateCustomer(
+  id: string,
+  input: {
+    name: string;
+    phone?: string | null;
+    address?: string | null;
+    note?: string | null;
+  },
+): void {
+  const state = db();
+  const customer = state.customers.find((c) => c.id === id);
+  if (!customer) throw new Error("Không tìm thấy khách hàng.");
+
+  customer.name = input.name.trim();
+  customer.phone = input.phone?.trim() || null;
+  customer.address = input.address?.trim() || null;
+  customer.note = input.note?.trim() || null;
+}
+
+export function demoDeleteCustomer(id: string): void {
+  const state = db();
+  if (state.salesOrders.some((o) => o.customer_id === id)) {
+    throw new Error("Không thể xóa khách hàng đã có đơn bán hàng.");
+  }
+  state.customers = state.customers.filter((c) => c.id !== id);
+}
+
+export function demoSalesOrders(status?: SalesOrderStatus | "all"): SalesOrderRow[] {
+  const state = db();
+  const custMap = new Map(state.customers.map((c) => [c.id, c]));
+  const itemMap = new Map(state.items.map((i) => [i.id, i]));
+
+  return state.salesOrders
+    .filter((o) => !status || status === "all" || o.status === status)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .map((order) => {
+      const cust = custMap.get(order.customer_id);
+      const items: SalesOrderItemRow[] = state.salesOrderItems
+        .filter((soi) => soi.order_id === order.id)
+        .map((soi) => {
+          const item = itemMap.get(soi.item_id);
+          return {
+            ...soi,
+            item_name: item?.name ?? "—",
+            item_code: item?.code ?? "—",
+            item_unit: item?.unit ?? "—",
+          };
+        });
+
+      return {
+        ...order,
+        customer_name: cust?.name ?? "—",
+        customer_phone: cust?.phone ?? null,
+        items,
+      };
+    });
+}
+
+export function demoSalesOrder(id: string): SalesOrderRow | null {
+  const orders = demoSalesOrders("all");
+  return orders.find((o) => o.id === id) ?? null;
+}
+
+export function demoCreateSalesOrder(input: {
+  customerId: string;
+  orderDate?: string;
+  deliveryDate?: string | null;
+  note?: string | null;
+  items: { itemId: string; quantity: number; unitPrice: number }[];
+}): SalesOrder {
+  const state = db();
+  const cust = state.customers.find((c) => c.id === input.customerId);
+  if (!cust) throw new Error("Khách hàng không tồn tại.");
+  if (!input.items || input.items.length === 0) {
+    throw new Error("Đơn hàng phải có ít nhất một mặt hàng.");
+  }
+
+  const orderId = uid();
+  const totalAmount = input.items.reduce(
+    (sum, line) => sum + line.quantity * line.unitPrice,
+    0,
+  );
+
+  const orderCode = `DHB-${todayISO().replace(/-/g, "").slice(2)}-${Math.floor(
+    100 + Math.random() * 900,
+  )}`;
+
+  const order: SalesOrder = {
+    id: orderId,
+    code: orderCode,
+    customer_id: input.customerId,
+    order_date: input.orderDate || todayISO(),
+    delivery_date: input.deliveryDate || null,
+    status: "cho_xac_nhan",
+    total_amount: totalAmount,
+    paid_amount: 0,
+    payment_status: "chua_thanh_toan",
+    note: input.note || null,
+    created_by: "demo",
+    created_at: nowISO(),
+  };
+
+  state.salesOrders.push(order);
+
+  for (const line of input.items) {
+    state.salesOrderItems.push({
+      id: uid(),
+      order_id: orderId,
+      item_id: line.itemId,
+      quantity: line.quantity,
+      unit_price: line.unitPrice,
+      total_price: line.quantity * line.unitPrice,
+    });
+  }
+
+  return order;
+}
+
+export function demoConfirmSalesOrder(orderId: string): void {
+  const state = db();
+  const order = state.salesOrders.find((o) => o.id === orderId);
+  if (!order) throw new Error("Không tìm thấy đơn hàng.");
+  if (order.status !== "cho_xac_nhan") {
+    throw new Error("Đơn hàng này không ở trạng thái chờ xác nhận.");
+  }
+
+  const items = state.salesOrderItems.filter((i) => i.order_id === orderId);
+
+  // Check on-hand stock
+  for (const line of items) {
+    const currentStock = onHand(state, line.item_id);
+    if (currentStock < line.quantity) {
+      const item = state.items.find((i) => i.id === line.item_id);
+      throw new Error(
+        `Mặt hàng "${item?.name ?? line.item_id}" không đủ tồn kho để xuất bán: cần ${line.quantity}, chỉ còn ${currentStock}.`,
+      );
+    }
+  }
+
+  // Deduct inventory
+  for (const line of items) {
+    state.movements.push({
+      id: uid(),
+      item_id: line.item_id,
+      type: "xuat",
+      quantity: -line.quantity,
+      unit_price: line.unit_price,
+      supplier_id: null,
+      note: `Xuất bán theo đơn ${order.code}`,
+      reference_type: "sales_order",
+      reference_id: order.id,
+      created_by: "demo",
+      created_at: nowISO(),
+    });
+  }
+
+  order.status = "da_giao";
+}
+
+export function demoPaySalesOrder(
+  orderId: string,
+  amount: number,
+  method: PaymentMethod = "tien_mat",
+  note?: string,
+): void {
+  const state = db();
+  const order = state.salesOrders.find((o) => o.id === orderId);
+  if (!order) throw new Error("Không tìm thấy đơn hàng.");
+  if (amount <= 0) throw new Error("Số tiền thanh toán phải lớn hơn 0.");
+
+  const newPaid = order.paid_amount + amount;
+  if (newPaid > order.total_amount) {
+    throw new Error("Số tiền thanh toán vượt quá tổng giá trị đơn hàng.");
+  }
+
+  order.paid_amount = newPaid;
+  order.payment_status =
+    newPaid >= order.total_amount ? "da_thanh_toan" : "thanh_toan_mot_phan";
+
+  // Create cash transaction
+  demoCreateCash({
+    type: "thu",
+    amount,
+    method,
+    category: "Bán hàng",
+    description: note || `Thu tiền đơn bán ${order.code}`,
+    transactionDate: todayISO(),
+  });
+}
+
+export function demoCancelSalesOrder(orderId: string): void {
+  const state = db();
+  const order = state.salesOrders.find((o) => o.id === orderId);
+  if (!order) throw new Error("Không tìm thấy đơn hàng.");
+  if (order.status === "da_giao") {
+    throw new Error("Không thể hủy đơn hàng đã xuất kho giao hàng.");
+  }
+  order.status = "huy";
 }

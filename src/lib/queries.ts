@@ -4,6 +4,7 @@ import {
   demoAttendanceSummary,
   demoBoms,
   demoCash,
+  demoCustomers,
   demoDashboard,
   demoEmployees,
   demoInventory,
@@ -12,6 +13,8 @@ import {
   demoOrders,
   demoPayroll,
   demoPayrollAdjustments,
+  demoSalesOrder,
+  demoSalesOrders,
   demoSuppliers,
   demoTasks,
 } from "@/lib/demo/store";
@@ -24,6 +27,7 @@ import type {
   BomRow,
   CashFilter,
   CashRow,
+  Customer,
   DashboardData,
   Employee,
   InventoryItem,
@@ -33,6 +37,8 @@ import type {
   PayrollAdjustmentRow,
   PayrollRow,
   ProductionRow,
+  SalesOrderRow,
+  SalesOrderStatus,
   StockMovement,
   Supplier,
   TaskRow,
@@ -522,4 +528,147 @@ export async function getPayrollAdjustments(
     amount: num(row.amount),
     employee_name: row.employee?.full_name ?? "—",
   }));
+}
+
+// --- Bán hàng & Khách hàng -------------------------------------------------
+
+export async function getCustomers(search?: string): Promise<Customer[]> {
+  if (!isSupabaseConfigured()) return demoCustomers(search);
+
+  const supabase = await createSupabaseServerClient();
+  let query = supabase.from("customers").select("*").order("name");
+  const keyword = safeSearch(search);
+  if (keyword) {
+    query = query.or(`name.ilike.%${keyword}%,code.ilike.%${keyword}%,phone.ilike.%${keyword}%`);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+type DbSalesOrderItem = {
+  id: string;
+  order_id: string;
+  item_id: string;
+  quantity: number | string;
+  unit_price: number | string;
+  total_price: number | string;
+  item: { name: string; code: string; unit: string } | null;
+};
+
+type DbSalesOrder = {
+  id: string;
+  code: string;
+  customer_id: string;
+  order_date: string;
+  delivery_date: string | null;
+  status: SalesOrderStatus;
+  total_amount: number | string;
+  paid_amount: number | string;
+  payment_status: "chua_thanh_toan" | "thanh_toan_mot_phan" | "da_thanh_toan";
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+  customer: { name: string; phone: string | null } | null;
+  items: DbSalesOrderItem[];
+};
+
+export async function getSalesOrders(
+  status?: SalesOrderStatus | "all",
+): Promise<SalesOrderRow[]> {
+  if (!isSupabaseConfigured()) return demoSalesOrders(status);
+
+  const supabase = await createSupabaseServerClient();
+  let query = supabase
+    .from("sales_orders")
+    .select(
+      `*,
+       customer:customers(name, phone),
+       items:sales_order_items(*, item:items(name, code, unit))`,
+    )
+    .order("order_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (status && status !== "all") {
+    query = query.eq("status", status);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  return ((data ?? []) as unknown as DbSalesOrder[]).map((order) => ({
+    id: order.id,
+    code: order.code,
+    customer_id: order.customer_id,
+    order_date: order.order_date,
+    delivery_date: order.delivery_date,
+    status: order.status,
+    total_amount: num(order.total_amount),
+    paid_amount: num(order.paid_amount),
+    payment_status: order.payment_status,
+    note: order.note,
+    created_by: order.created_by,
+    created_at: order.created_at,
+    customer_name: order.customer?.name ?? "—",
+    customer_phone: order.customer?.phone ?? null,
+    items: (order.items ?? []).map((i) => ({
+      id: i.id,
+      order_id: i.order_id,
+      item_id: i.item_id,
+      quantity: num(i.quantity),
+      unit_price: num(i.unit_price),
+      total_price: num(i.total_price),
+      item_name: i.item?.name ?? "—",
+      item_code: i.item?.code ?? "—",
+      item_unit: i.item?.unit ?? "—",
+    })),
+  }));
+}
+
+export async function getSalesOrder(id: string): Promise<SalesOrderRow | null> {
+  if (!isSupabaseConfigured()) return demoSalesOrder(id);
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("sales_orders")
+    .select(
+      `*,
+       customer:customers(name, phone),
+       items:sales_order_items(*, item:items(name, code, unit))`,
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+
+  const order = data as unknown as DbSalesOrder;
+  return {
+    id: order.id,
+    code: order.code,
+    customer_id: order.customer_id,
+    order_date: order.order_date,
+    delivery_date: order.delivery_date,
+    status: order.status,
+    total_amount: num(order.total_amount),
+    paid_amount: num(order.paid_amount),
+    payment_status: order.payment_status,
+    note: order.note,
+    created_by: order.created_by,
+    created_at: order.created_at,
+    customer_name: order.customer?.name ?? "—",
+    customer_phone: order.customer?.phone ?? null,
+    items: (order.items ?? []).map((i) => ({
+      id: i.id,
+      order_id: i.order_id,
+      item_id: i.item_id,
+      quantity: num(i.quantity),
+      unit_price: num(i.unit_price),
+      total_price: num(i.total_price),
+      item_name: i.item?.name ?? "—",
+      item_code: i.item?.code ?? "—",
+      item_unit: i.item?.unit ?? "—",
+    })),
+  };
 }

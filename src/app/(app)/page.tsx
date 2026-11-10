@@ -4,6 +4,7 @@ import {
   ArrowRightIcon,
   BoxesIcon,
   FactoryIcon,
+  ShoppingCartIcon,
   WalletIcon,
 } from "lucide-react";
 import { MonthlyCashChart } from "@/components/monthly-cash-chart";
@@ -45,6 +46,11 @@ export default async function DashboardPage() {
         title="Bảng điều khiển"
         description="Tổng quan hoạt động kho, sản xuất và dòng tiền của doanh nghiệp."
       >
+        <Button asChild variant="outline" size="sm">
+          <Link href="/ban-hang">
+            <ShoppingCartIcon /> Đơn bán hàng
+          </Link>
+        </Button>
         <Button asChild variant="outline" size="sm">
           <Link href="/kho/nhap-xuat">
             Nhập / xuất kho <ArrowRightIcon />

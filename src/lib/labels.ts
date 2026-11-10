@@ -1,4 +1,14 @@
-import type { CashType, ItemType, MovementType, PaymentMethod, ProductionStatus, Role, TaskStatus } from "@/lib/types";
+import type {
+  CashType,
+  ItemType,
+  MovementType,
+  PaymentMethod,
+  PaymentStatus,
+  ProductionStatus,
+  Role,
+  SalesOrderStatus,
+  TaskStatus,
+} from "@/lib/types";
 
 export const ROLE_LABELS: Record<Role, string> = {
   admin: "Quản trị",
@@ -45,6 +55,18 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   hoan_thanh: "Hoàn thành",
 };
 
+export const SALES_ORDER_STATUS_LABELS: Record<SalesOrderStatus, string> = {
+  cho_xac_nhan: "Chờ xuất kho",
+  da_giao: "Đã giao hàng",
+  huy: "Đã hủy",
+};
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  chua_thanh_toan: "Chưa thanh toán",
+  thanh_toan_mot_phan: "Thanh toán 1 phần",
+  da_thanh_toan: "Đã thanh toán đủ",
+};
+
 export const CASH_TYPE_LABELS: Record<CashType, string> = {
   thu: "Thu",
   chi: "Chi",
@@ -72,5 +94,7 @@ export const CAN_ACCESS = {
   sanXuat: (role: Role) => role === "admin" || role === "san_xuat",
   keToan: (role: Role) => role === "admin" || role === "ke_toan",
   nhanSu: (role: Role) => role === "admin",
+  banHang: (role: Role) => role === "admin" || role === "ke_toan" || role === "kho",
+  banHangWrite: (role: Role) => role === "admin" || role === "ke_toan",
   myTasks: () => true,
 } as const;

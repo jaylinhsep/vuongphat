@@ -235,3 +235,54 @@ export type PayrollRow = {
   adjustments: number;
   net_salary: number;
 };
+
+// --- Bán hàng & Khách hàng -------------------------------------------------
+
+export type SalesOrderStatus = "cho_xac_nhan" | "da_giao" | "huy";
+export type PaymentStatus = "chua_thanh_toan" | "thanh_toan_mot_phan" | "da_thanh_toan";
+
+export type Customer = {
+  id: string;
+  code: string;
+  name: string;
+  phone: string | null;
+  address: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+export type SalesOrderItem = {
+  id: string;
+  order_id: string;
+  item_id: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+};
+
+export type SalesOrderItemRow = SalesOrderItem & {
+  item_name: string;
+  item_code: string;
+  item_unit: string;
+};
+
+export type SalesOrder = {
+  id: string;
+  code: string;
+  customer_id: string;
+  order_date: string;
+  delivery_date: string | null;
+  status: SalesOrderStatus;
+  total_amount: number;
+  paid_amount: number;
+  payment_status: PaymentStatus;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type SalesOrderRow = SalesOrder & {
+  customer_name: string;
+  customer_phone: string | null;
+  items: SalesOrderItemRow[];
+};

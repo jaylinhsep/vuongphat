@@ -8,7 +8,9 @@ import {
   FlaskConical,
   LayoutDashboard,
   ListTodo,
+  ShoppingCart,
   Users,
+  UsersRound,
   Wallet,
   Warehouse,
   type LucideIcon,
@@ -43,6 +45,23 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Việc của tôi",
         icon: ListTodo,
         allowed: CAN_ACCESS.myTasks,
+      },
+    ],
+  },
+  {
+    title: "Bán hàng",
+    items: [
+      {
+        href: "/ban-hang",
+        label: "Đơn bán hàng",
+        icon: ShoppingCart,
+        allowed: CAN_ACCESS.banHang,
+      },
+      {
+        href: "/ban-hang/khach-hang",
+        label: "Khách hàng",
+        icon: UsersRound,
+        allowed: CAN_ACCESS.banHang,
       },
     ],
   },
