@@ -131,34 +131,40 @@
 
 .print-table th,
 .print-table td {
-  border: 1px solid #000;
-  padding: 8px 10px;
+  border: 1.5px solid #000;
+  padding: 12px 14px;
 }
 .print-table th {
   background: #f0f0f0;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 1.1rem;
 }
 .print-table td.print-qty {
-  font-size: 1.6rem;
-  font-weight: 800;
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #000;
+  letter-spacing: -0.01em;
 }
 .print-table-wrap {
   flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
 }
 .print-table-wrap .print-table {
-  height: 100%;
+  width: 100%;
 }
 .print-table tfoot td.print-total {
-  border: 2px solid #000;
+  border: 2.5px solid #000;
   background: #f0f0f0;
-  padding: 9px 7px;
-  font-size: 1.05rem;
+  padding: 14px 16px;
+  font-size: 1.25rem;
   font-weight: 700;
   text-align: left;
 }
 .print-table tfoot td.print-total .print-total-qty {
-  font-size: 1.35rem;
-  font-weight: 800;
+  font-size: 1.85rem;
+  font-weight: 900;
+  color: #000;
 }
 
 @media print {

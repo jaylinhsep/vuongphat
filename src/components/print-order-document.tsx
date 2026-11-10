@@ -119,26 +119,35 @@ export function PrintOrderDocument({
 
         {bom ? (
           <>
-            <div className="print-table-wrap mt-4">
-              <table className="print-table w-full border-collapse text-base">
+            <div className="print-table-wrap mt-6">
+              <table className="print-table w-full border-collapse">
                 <thead>
-                  <tr>
-                    <th className="w-10">STT</th>
-                    <th className="text-left">Nguyên liệu</th>
-                    <th className="w-24">Mã</th>
-                    <th className="w-20">ĐVT</th>
-                    <th className="w-44 text-right">Số lượng cần</th>
+                  <tr className="border-b-2 border-black">
+                    <th className="w-14 text-center uppercase">STT</th>
+                    <th className="text-left uppercase pl-4">Tên nguyên liệu</th>
+                    <th className="w-28 text-center uppercase">Mã NVL</th>
+                    <th className="w-24 text-center uppercase">ĐVT</th>
+                    <th className="w-56 text-right uppercase pr-4">Số lượng cần</th>
                   </tr>
                 </thead>
                 <tbody>
                   {lines.map((line, index) => (
-                    <tr key={line.id}>
-                      <td className="text-center">{index + 1}</td>
-                      <td className="text-lg font-medium">{line.material_name}</td>
-                      <td className="font-mono text-sm">{line.material_code}</td>
-                      <td className="text-center text-lg">{line.material_unit}</td>
-                      <td className="print-qty text-right">
-                        {formatQuantity(line.needed)} {line.material_unit}
+                    <tr key={line.id} className="hover:bg-neutral-50">
+                      <td className="text-center font-bold text-xl">{index + 1}</td>
+                      <td className="pl-4 text-2xl font-bold text-black leading-tight">
+                        {line.material_name}
+                      </td>
+                      <td className="text-center font-mono text-base font-semibold text-neutral-800">
+                        {line.material_code}
+                      </td>
+                      <td className="text-center text-xl font-bold text-black">
+                        {line.material_unit}
+                      </td>
+                      <td className="print-qty text-right pr-4">
+                        {formatQuantity(line.needed)}{" "}
+                        <span className="text-lg font-bold text-neutral-700">
+                          {line.material_unit}
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -146,11 +155,11 @@ export function PrintOrderDocument({
                 <tfoot>
                   <tr>
                     <td colSpan={5} className="print-total">
-                      TỔNG CỘNG SỐ LƯỢNG CẦN SẢN XUẤT (ĐẦU RA):{" "}
-                      <span className="print-total-qty">
+                      TỔNG CỘNG ĐẦU RA CẦN SẢN XUẤT:{" "}
+                      <span className="print-total-qty ml-2">
                         {formatQuantity(order.quantity)} {order.product_unit}
                       </span>{" "}
-                      — {order.product_name}
+                      — <span className="uppercase">{order.product_name}</span>
                     </td>
                   </tr>
                 </tfoot>
