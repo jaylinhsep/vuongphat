@@ -4,6 +4,7 @@ import {
   ArrowLeftRightIcon,
   BoxesIcon,
   CoinsIcon,
+  DownloadIcon,
   SearchIcon,
   Settings2Icon,
 } from "lucide-react";
@@ -44,6 +45,7 @@ export default async function KhoPage({
     (item) => item.min_stock > 0 && item.on_hand < item.min_stock,
   ).length;
   const canWrite = CAN_ACCESS.khoWrite(user.role);
+  const exportHref = `/api/kho/excel${q ? `?q=${encodeURIComponent(q)}` : ""}`;
 
   return (
     <div className="space-y-6">
@@ -51,6 +53,11 @@ export default async function KhoPage({
         title="Tồn kho"
         description="Số lượng tồn khả dụng theo thời gian thực, tính từ toàn bộ phiếu kho."
       >
+        <Button asChild variant="outline" size="sm">
+          <a href={exportHref}>
+            <DownloadIcon /> Xuất Excel
+          </a>
+        </Button>
         {canWrite && (
           <>
             <Button asChild variant="outline" size="sm">

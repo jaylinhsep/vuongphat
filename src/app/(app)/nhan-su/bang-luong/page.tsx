@@ -1,10 +1,11 @@
-import { BanknoteIcon, CalendarCheckIcon, UsersIcon } from "lucide-react";
+import { BanknoteIcon, CalendarCheckIcon, DownloadIcon, UsersIcon } from "lucide-react";
 import { deletePayrollAdjustmentAction } from "@/actions/nhan-su-actions";
 import { ConfirmDeleteButton } from "@/components/forms/confirm-delete-button";
 import { AdjustmentForm } from "@/components/forms/payroll-form";
 import { PageHeader } from "@/components/page-header";
 import { PeriodSelector } from "@/components/period-selector";
 import { StatCard } from "@/components/stat-card";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -62,6 +63,11 @@ export default async function BangLuongPage({
         description={`Lương theo ngày công: ngày công × lương/ngày, cộng điều chỉnh (${periodLabel(period)}).`}
       >
         <PeriodSelector period={period} basePath="/nhan-su/bang-luong" />
+        <Button asChild variant="outline" size="sm">
+          <a href={`/api/nhan-su/excel?period=${period}`}>
+            <DownloadIcon /> Xuất Excel
+          </a>
+        </Button>
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
