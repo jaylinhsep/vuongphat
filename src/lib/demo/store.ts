@@ -357,6 +357,34 @@ export function demoCreateItem(input: {
   });
 }
 
+export function demoUpdateItem(input: {
+  id: string;
+  code: string;
+  name: string;
+  unit: string;
+  type: ItemType;
+  unitPrice: number;
+  minStock: number;
+}): void {
+  const state = db();
+  const item = state.items.find((entry) => entry.id === input.id);
+  if (!item) throw new Error("Không tìm thấy hàng hóa");
+  const code = input.code.trim().toUpperCase();
+  if (
+    state.items.some(
+      (entry) => entry.id !== input.id && entry.code.toLowerCase() === code.toLowerCase(),
+    )
+  ) {
+    throw new Error(`Mã hàng "${code}" đã tồn tại`);
+  }
+  item.code = code;
+  item.name = input.name.trim();
+  item.unit = input.unit.trim();
+  item.type = input.type;
+  item.unit_price = input.unitPrice || 0;
+  item.min_stock = input.minStock || 0;
+}
+
 export function demoCreateSupplier(input: { name: string; phone?: string; note?: string }): void {
   const state = db();
   const name = input.name.trim();

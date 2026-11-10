@@ -1,9 +1,13 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { Loader2Icon, PlusIcon } from "lucide-react";
+import { Loader2Icon, PencilIcon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
-import { createItemAction, createSupplierAction } from "@/actions/kho-actions";
+import {
+  createItemAction,
+  createSupplierAction,
+  updateItemAction,
+} from "@/actions/kho-actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,14 +31,14 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { initialFormState } from "@/lib/form-state";
 import { ITEM_TYPE_LABELS } from "@/lib/labels";
-import type { ItemType } from "@/lib/types";
+import type { Item, ItemType } from "@/lib/types";
 
-export function ItemFormDialog() {
+export function ItemFormDialog({ item }: { item?: Item }) {
   const [open, setOpen] = useState(false);
-  const [type, setType] = useState<ItemType>("nguyen_lieu");
+  const [type, setType] = useState<ItemType>(item?.type ?? "nguyen_lieu");
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, pending] = useActionState(
-    createItemAction,
+    item ? updateItemAction : createItemAction,
     initialFormState,
   );
 
@@ -43,27 +47,41 @@ export function ItemFormDialog() {
       toast.success(state.message);
       setOpen(false);
       formRef.current?.reset();
-      setType("nguyen_lieu");
+      setType(item?.type ?? "nguyen_lieu");
     } else if (state.status === "error") {
       toast.error(state.message);
     }
-  }, [state]);
+  }, [state, item]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm">
-          <PlusIcon /> Thêm hàng hóa
-        </Button>
+        {item ? (
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Sửa hàng hóa"
+            title="Sửa hàng hóa"
+          >
+            <PencilIcon />
+          </Button>
+        ) : (
+          <Button size="sm">
+            <PlusIcon /> Thêm hàng hóa
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Thêm hàng hóa</DialogTitle>
+          <DialogTitle>{item ? "Sửa hàng hóa" : "Thêm hàng hóa"}</DialogTitle>
           <DialogDescription>
-            Khai báo nguyên liệu hoặc thành phẩm dùng trong kho và sản xuất.
+            {item
+              ? "Cập nhật mã, tên, đơn vị tính và định mức của hàng hóa."
+              : "Khai báo nguyên liệu hoặc thành phẩm dùng trong kho và sản xuất."}
           </DialogDescription>
         </DialogHeader>
         <form ref={formRef} action={formAction} className="space-y-4">
+          {item && <input type="hidden" name="id" value={item.id} />}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="item-code">Mã hàng</Label>
@@ -71,6 +89,7 @@ export function ItemFormDialog() {
                 id="item-code"
                 name="code"
                 placeholder="VD: NL006"
+                defaultValue={item?.code}
                 required
               />
             </div>
@@ -80,6 +99,7 @@ export function ItemFormDialog() {
                 id="item-unit"
                 name="unit"
                 placeholder="kg, lít, cái…"
+                defaultValue={item?.unit}
                 required
               />
             </div>
@@ -89,6 +109,7 @@ export function ItemFormDialog() {
                 id="item-name"
                 name="name"
                 placeholder="VD: Bột mì đa dụng"
+                defaultValue={item?.name}
                 required
               />
             </div>
@@ -119,7 +140,7 @@ export function ItemFormDialog() {
                 type="number"
                 min={0}
                 step={100}
-                defaultValue={0}
+                defaultValue={item?.unit_price ?? 0}
               />
             </div>
             <div className="space-y-2">
@@ -130,7 +151,7 @@ export function ItemFormDialog() {
                 type="number"
                 min={0}
                 step="0.001"
-                defaultValue={0}
+                defaultValue={item?.min_stock ?? 0}
               />
             </div>
           </div>
@@ -146,7 +167,7 @@ export function ItemFormDialog() {
                   <Loader2Icon className="animate-spin" /> Đang lưu…
                 </>
               ) : (
-                "Lưu hàng hóa"
+                item ? "Lưu thay đổi" : "Lưu hàng hóa"
               )}
             </Button>
           </DialogFooter>

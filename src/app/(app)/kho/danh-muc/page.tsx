@@ -68,13 +68,14 @@ export default async function DanhMucPage() {
                   <TableHead>ĐVT</TableHead>
                   <TableHead className="text-right">Đơn giá</TableHead>
                   <TableHead className="text-right">Tồn hiện tại</TableHead>
+                  {canWrite && <TableHead className="w-12" />}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={canWrite ? 7 : 6}
                       className="py-10 text-center text-sm text-muted-foreground"
                     >
                       Chưa có hàng hóa nào. Bấm “Thêm hàng hóa” để bắt đầu.
@@ -101,6 +102,11 @@ export default async function DanhMucPage() {
                       <TableCell className="text-right font-medium">
                         {formatQuantity(item.on_hand)} {item.unit}
                       </TableCell>
+                      {canWrite && (
+                        <TableCell className="text-right">
+                          <ItemFormDialog item={item} />
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 )}

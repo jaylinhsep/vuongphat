@@ -32,6 +32,16 @@ export async function updateSession(request: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
+  // Giữ lại cookie phiên vừa được refresh khi redirect, nếu không trình duyệt
+  // giữ token cũ hết hạn gây lặp redirect / mất phiên khi lưu dữ liệu.
+  const redirectTo = (url: typeof request.nextUrl) => {
+    const redirect = NextResponse.redirect(url);
+    response.cookies.getAll().forEach((cookie) => {
+      redirect.cookies.set(cookie);
+    });
+    return redirect;
+  };
+
   const pathname = request.nextUrl.pathname;
   const isLogin = pathname === "/login";
 
@@ -42,14 +52,14 @@ export async function updateSession(request: NextRequest) {
     if (pathname !== "/") {
       url.searchParams.set("next", pathname);
     }
-    return NextResponse.redirect(url);
+    return redirectTo(url);
   }
 
   if (session && isLogin) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";
-    return NextResponse.redirect(url);
+    return redirectTo(url);
   }
 
   return response;

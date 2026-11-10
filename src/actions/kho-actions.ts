@@ -7,6 +7,7 @@ import {
   demoCreateItem,
   demoCreateMovement,
   demoCreateSupplier,
+  demoUpdateItem,
 } from "@/lib/demo/store";
 import { errorState, type FormState } from "@/lib/form-state";
 import { parseNumber } from "@/lib/format";
@@ -141,6 +142,71 @@ export async function createItemAction(
     revalidatePath("/san-xuat");
     revalidatePath("/san-xuat/cong-thuc");
     return { status: "success", message: `Đã thêm hàng hóa ${name}.` };
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function updateItemAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await requireKhoWrite();
+
+    const id = String(formData.get("id") ?? "");
+    const code = String(formData.get("code") ?? "").trim();
+    const name = String(formData.get("name") ?? "").trim();
+    const unit = String(formData.get("unit") ?? "").trim();
+    const type = String(formData.get("type") ?? "") as ItemType;
+    const unitPrice = parseNumber(formData.get("unit_price"));
+    const minStock = parseNumber(formData.get("min_stock"));
+
+    if (!id) return { status: "error", message: "Thiếu mã hàng hóa cần sửa." };
+    if (!code || !name || !unit) {
+      return { status: "error", message: "Nhập đầy đủ mã, tên và đơn vị tính." };
+    }
+    if (!["nguyen_lieu", "thanh_pham"].includes(type)) {
+      return { status: "error", message: "Loại hàng hóa không hợp lệ." };
+    }
+
+    const payload = {
+      id,
+      code,
+      name,
+      unit,
+      type,
+      unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
+      minStock: Number.isFinite(minStock) ? minStock : 0,
+    };
+
+    if (!isSupabaseConfigured()) {
+      demoUpdateItem(payload);
+    } else {
+      const supabase = await createSupabaseServerClient();
+      const { error } = await supabase
+        .from("items")
+        .update({
+          code: payload.code,
+          name: payload.name,
+          unit: payload.unit,
+          type: payload.type,
+          unit_price: payload.unitPrice,
+          min_stock: payload.minStock,
+        })
+        .eq("id", id);
+      if (error) {
+        if (error.code === "23505") {
+          return { status: "error", message: `Mã hàng "${code}" đã tồn tại.` };
+        }
+        throw new Error(error.message);
+      }
+    }
+
+    refreshKho();
+    revalidatePath("/san-xuat");
+    revalidatePath("/san-xuat/cong-thuc");
+    return { status: "success", message: `Đã cập nhật hàng hóa ${name}.` };
   } catch (error) {
     return errorState(error);
   }
