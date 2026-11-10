@@ -64,6 +64,23 @@ function safeSearch(value?: string): string | null {
   return cleaned ? cleaned : null;
 }
 
+function isMissingTableError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const err = error as { code?: string; message?: string };
+  return (
+    err.code === "PGRST205" ||
+    err.code === "42P01" ||
+    err.code === "42703" ||
+    Boolean(
+      err.message &&
+        (err.message.includes("does not exist") ||
+          err.message.includes("schema cache") ||
+          err.message.includes("Could not find the table") ||
+          (err.message.includes("column") && err.message.includes("does not exist"))),
+    )
+  );
+}
+
 type DbInventory = {
   id: string;
   code: string;
@@ -87,7 +104,10 @@ export async function getInventory(search?: string): Promise<InventoryItem[]> {
   }
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingTableError(error)) return demoInventory(search);
+    throw new Error(error.message);
+  }
 
   return ((data ?? []) as unknown as DbInventory[]).map((row) => ({
     id: row.id,
@@ -110,7 +130,10 @@ export async function getItems(type?: ItemType): Promise<Item[]> {
   if (type) query = query.eq("type", type);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingTableError(error)) return demoItems(type);
+    throw new Error(error.message);
+  }
 
   return ((data ?? []) as Item[]).map((item) => ({
     ...item,
@@ -256,7 +279,10 @@ export async function getProductionOrders(): Promise<ProductionRow[]> {
     .select("*, items(name, code, unit, unit_price)")
     .order("created_at", { ascending: false });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingTableError(error)) return demoOrders();
+    throw new Error(error.message);
+  }
 
   return ((data ?? []) as unknown as DbOrder[]).map((order) => ({
     ...order,
@@ -296,7 +322,10 @@ export async function getProductionCostReport(filter?: {
   if (filter?.productId && filter.productId !== "all") query = query.eq("product_id", filter.productId);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingTableError(error)) return demoProductionCostReport(filter);
+    throw new Error(error.message);
+  }
 
   return ((data ?? []) as unknown as DbOrder[]).map((order) => {
     const plannedQty = num(order.quantity);
@@ -365,7 +394,10 @@ export async function getCashTransactions(filter: CashFilter = {}): Promise<Cash
   if (filter.type && filter.type !== "all") query = query.eq("type", filter.type);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingTableError(error)) return demoCash(filter);
+    throw new Error(error.message);
+  }
 
   return ((data ?? []) as unknown as DbCash[]).map((row) => ({
     ...row,
@@ -488,7 +520,10 @@ export async function getTasks(employeeId?: string): Promise<TaskRow[]> {
   if (employeeId) query = query.eq("employee_id", employeeId);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingTableError(error)) return demoTasks(employeeId);
+    throw new Error(error.message);
+  }
 
   return ((data ?? []) as unknown as DbTask[]).map((row) => ({
     ...row,
@@ -516,7 +551,10 @@ export async function getAttendance(period?: string): Promise<AttendanceRow[]> {
   }
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingTableError(error)) return demoAttendance(period);
+    throw new Error(error.message);
+  }
 
   return ((data ?? []) as unknown as DbAttendance[]).map((row) => ({
     ...row,
@@ -617,7 +655,10 @@ export async function getPayrollAdjustments(
   if (period) query = query.eq("period", period);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingTableError(error)) return demoPayrollAdjustments(period);
+    throw new Error(error.message);
+  }
 
   return ((data ?? []) as unknown as DbAdjustment[]).map((row) => ({
     ...row,
@@ -639,7 +680,10 @@ export async function getCustomers(search?: string): Promise<Customer[]> {
   }
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingTableError(error)) return demoCustomers(search);
+    throw new Error(error.message);
+  }
   return data ?? [];
 }
 
@@ -691,7 +735,10 @@ export async function getSalesOrders(
   }
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingTableError(error)) return demoSalesOrders(status);
+    throw new Error(error.message);
+  }
 
   return ((data ?? []) as unknown as DbSalesOrder[]).map((order) => ({
     id: order.id,
@@ -736,7 +783,10 @@ export async function getSalesOrder(id: string): Promise<SalesOrderRow | null> {
     .eq("id", id)
     .maybeSingle();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingTableError(error)) return demoSalesOrder(id);
+    throw new Error(error.message);
+  }
   if (!data) return null;
 
   const order = data as unknown as DbSalesOrder;
@@ -819,7 +869,10 @@ export async function getPurchaseOrders(
   }
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingTableError(error)) return demoPurchaseOrders(status);
+    throw new Error(error.message);
+  }
 
   return ((data ?? []) as unknown as DbPurchaseOrder[]).map((order) => ({
     id: order.id,
@@ -864,7 +917,10 @@ export async function getPurchaseOrder(id: string): Promise<PurchaseOrderRow | n
     .eq("id", id)
     .maybeSingle();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingTableError(error)) return demoPurchaseOrder(id);
+    throw new Error(error.message);
+  }
   if (!data) return null;
 
   const order = data as unknown as DbPurchaseOrder;
@@ -907,13 +963,19 @@ export async function getCustomerDebts(): Promise<CustomerDebtRow[]> {
     .from("customers")
     .select("id, code, name, phone")
     .order("name");
-  if (cErr) throw new Error(cErr.message);
+  if (cErr) {
+    if (isMissingTableError(cErr)) return demoCustomerDebts();
+    throw new Error(cErr.message);
+  }
 
   const { data: orders, error: oErr } = await supabase
     .from("sales_orders")
     .select("customer_id, total_amount, paid_amount, status")
     .neq("status", "huy");
-  if (oErr) throw new Error(oErr.message);
+  if (oErr) {
+    if (isMissingTableError(oErr)) return demoCustomerDebts();
+    throw new Error(oErr.message);
+  }
 
   const statsMap = new Map<string, { totalSales: number; totalPaid: number }>();
   for (const o of orders ?? []) {
@@ -949,13 +1011,19 @@ export async function getSupplierDebts(): Promise<SupplierDebtRow[]> {
     .from("suppliers")
     .select("id, name, phone")
     .order("name");
-  if (sErr) throw new Error(sErr.message);
+  if (sErr) {
+    if (isMissingTableError(sErr)) return demoSupplierDebts();
+    throw new Error(sErr.message);
+  }
 
   const { data: orders, error: oErr } = await supabase
     .from("purchase_orders")
     .select("supplier_id, total_amount, paid_amount, status")
     .neq("status", "huy");
-  if (oErr) throw new Error(oErr.message);
+  if (oErr) {
+    if (isMissingTableError(oErr)) return demoSupplierDebts();
+    throw new Error(oErr.message);
+  }
 
   const statsMap = new Map<string, { totalPurchases: number; totalPaid: number }>();
   for (const o of orders ?? []) {
