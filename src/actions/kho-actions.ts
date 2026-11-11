@@ -142,7 +142,7 @@ export async function createItemAction(
     if (!code || !name || !unit) {
       return { status: "error", message: "Nhập đầy đủ mã, tên và đơn vị tính." };
     }
-    if (!["nguyen_lieu", "thanh_pham"].includes(type)) {
+    if (!["nguyen_lieu", "ban_thanh_pham", "thanh_pham"].includes(type)) {
       return { status: "error", message: "Loại hàng hóa không hợp lệ." };
     }
 
@@ -220,7 +220,7 @@ export async function updateItemAction(
     if (!code || !name || !unit) {
       return { status: "error", message: "Nhập đầy đủ mã, tên và đơn vị tính." };
     }
-    if (!["nguyen_lieu", "thanh_pham"].includes(type)) {
+    if (!["nguyen_lieu", "ban_thanh_pham", "thanh_pham"].includes(type)) {
       return { status: "error", message: "Loại hàng hóa không hợp lệ." };
     }
 

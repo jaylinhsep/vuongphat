@@ -38,7 +38,9 @@ export default async function KhoPage({
   const inventory = await getInventory(q);
 
   const selectedType =
-    type === "nguyen_lieu" || type === "thanh_pham" ? type : "all";
+    type === "nguyen_lieu" || type === "thanh_pham" || type === "ban_thanh_pham"
+      ? type
+      : "all";
 
   const displayedInventory =
     selectedType === "all"
@@ -51,6 +53,12 @@ export default async function KhoPage({
   );
   const nlValue = inventory
     .filter((item) => item.type === "nguyen_lieu")
+    .reduce(
+      (total, item) => total + Math.max(item.on_hand, 0) * item.unit_price,
+      0,
+    );
+  const btpValue = inventory
+    .filter((item) => item.type === "ban_thanh_pham")
     .reduce(
       (total, item) => total + Math.max(item.on_hand, 0) * item.unit_price,
       0,
@@ -76,7 +84,7 @@ export default async function KhoPage({
     <div className="space-y-6">
       <PageHeader
         title="Tồn kho"
-        description="Quản lý đa kho theo thời gian thực: Kho Nguyên vật liệu và Kho Thành phẩm, tính từ toàn bộ phiếu kho."
+        description="Quản lý đa kho theo thời gian thực: Kho Nguyên vật liệu, Bán thành phẩm và Kho Thành phẩm, tính từ toàn bộ phiếu kho."
       >
         <Button asChild variant="outline" size="sm">
           <a href={exportHref}>
@@ -99,7 +107,7 @@ export default async function KhoPage({
         )}
       </PageHeader>
 
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard
           label="Mặt hàng đang quản lý"
           value={formatNumber(inventory.length)}
@@ -111,6 +119,13 @@ export default async function KhoPage({
           hint="Giá trị tồn NVL hiện hành"
           icon={CoinsIcon}
           tone="primary"
+        />
+        <StatCard
+          label="Kho Bán thành phẩm"
+          value={formatCurrency(btpValue)}
+          hint="Giá trị tồn BTP hiện hành"
+          icon={CoinsIcon}
+          tone="purple"
         />
         <StatCard
           label="Kho Thành phẩm"
@@ -152,6 +167,18 @@ export default async function KhoPage({
         </Button>
         <Button
           asChild
+          variant={selectedType === "ban_thanh_pham" ? "default" : "outline"}
+          size="sm"
+        >
+          <Link
+            href={`/kho?type=ban_thanh_pham${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+          >
+            Kho Bán thành phẩm (
+            {inventory.filter((i) => i.type === "ban_thanh_pham").length})
+          </Link>
+        </Button>
+        <Button
+          asChild
           variant={selectedType === "thanh_pham" ? "default" : "outline"}
           size="sm"
         >
@@ -169,9 +196,11 @@ export default async function KhoPage({
           <CardTitle>
             {selectedType === "nguyen_lieu"
               ? "Kho Nguyên vật liệu"
-              : selectedType === "thanh_pham"
-                ? "Kho Thành phẩm"
-                : "Danh sách toàn bộ hàng hóa"}
+              : selectedType === "ban_thanh_pham"
+                ? "Kho Bán thành phẩm"
+                : selectedType === "thanh_pham"
+                  ? "Kho Thành phẩm"
+                  : "Danh sách toàn bộ hàng hóa"}
           </CardTitle>
           <form action="/kho" className="flex w-full gap-2 sm:w-auto">
             {selectedType !== "all" && (

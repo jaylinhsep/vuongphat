@@ -57,6 +57,11 @@ export function BomForm({
     [materials],
   );
 
+  const availableMaterials = useMemo(
+    () => materials.filter((m) => m.id !== productId),
+    [materials, productId],
+  );
+
   const batchCost = lines.reduce((total, line) => {
     const material = materialById.get(line.materialId);
     const quantity = Number(line.quantity);
@@ -104,25 +109,26 @@ export function BomForm({
     <form action={formAction} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>Thành phẩm</Label>
+          <Label>Mặt hàng cần lập công thức</Label>
           <Select
             name="product_id"
             value={productId}
             onValueChange={selectProduct}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Chọn thành phẩm" />
+              <SelectValue placeholder="Chọn thành phẩm hoặc bán thành phẩm" />
             </SelectTrigger>
             <SelectContent>
               {products.map((product) => (
                 <SelectItem key={product.id} value={product.id}>
-                  {product.code} — {product.name}
+                  {product.type === "ban_thanh_pham" ? "[BTP] " : "[TP] "}
+                  {product.code} — {product.name} ({product.unit})
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            Chọn thành phẩm để tải công thức hiện có (nếu đã thiết lập).
+            Lập công thức cho Thành phẩm hoặc Bán thành phẩm.
           </p>
         </div>
 
@@ -147,7 +153,7 @@ export function BomForm({
       <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
         <div className="flex items-center justify-between">
           <Label className="flex items-center gap-1.5">
-            <FlaskConicalIcon className="size-3.5" /> Nguyên liệu &amp; định lượng
+            <FlaskConicalIcon className="size-3.5" /> Nguyên liệu &amp; Bán thành phẩm đầu vào
           </Label>
           <Button
             type="button"
@@ -178,11 +184,12 @@ export function BomForm({
                   }
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Chọn nguyên liệu" />
+                    <SelectValue placeholder="Chọn nguyên liệu hoặc bán thành phẩm" />
                   </SelectTrigger>
                   <SelectContent>
-                    {materials.map((entry) => (
+                    {availableMaterials.map((entry) => (
                       <SelectItem key={entry.id} value={entry.id}>
+                        {entry.type === "ban_thanh_pham" ? "[BTP] " : "[NL] "}
                         {entry.code} — {entry.name} ({entry.unit})
                       </SelectItem>
                     ))}

@@ -25,11 +25,17 @@ import { getBoms, getItems } from "@/lib/queries";
 export default async function CongThucPage() {
   await requireRole(CAN_ACCESS.sanXuatBom);
 
-  const [boms, products, materials] = await Promise.all([
+  const [boms, allItems] = await Promise.all([
     getBoms(),
-    getItems("thanh_pham"),
-    getItems("nguyen_lieu"),
+    getItems(),
   ]);
+
+  const products = allItems.filter(
+    (i) => i.type === "thanh_pham" || i.type === "ban_thanh_pham",
+  );
+  const materials = allItems.filter(
+    (i) => i.type === "nguyen_lieu" || i.type === "ban_thanh_pham",
+  );
 
   return (
     <div className="space-y-6">

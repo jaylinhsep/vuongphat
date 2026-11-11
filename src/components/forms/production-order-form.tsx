@@ -65,26 +65,27 @@ export function ProductionOrderDialog({ products }: { products: Item[] }) {
         </DialogHeader>
         <form ref={formRef} action={formAction} className="space-y-4">
           <div className="space-y-2">
-            <Label>Thành phẩm</Label>
+            <Label>Mặt hàng sản xuất</Label>
             <Select
               name="product_id"
               value={productId}
               onValueChange={setProductId}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Chọn thành phẩm" />
+                <SelectValue placeholder="Chọn thành phẩm / bán thành phẩm" />
               </SelectTrigger>
               <SelectContent>
                 {products.map((product) => (
                   <SelectItem key={product.id} value={product.id}>
-                    {product.code} — {product.name}
+                    {product.type === "ban_thanh_pham" ? "[BTP] " : "[TP] "}
+                    {product.code} — {product.name} ({product.unit})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {products.length === 0 && (
               <p className="text-xs text-rose-600">
-                Chưa có thành phẩm. Hãy thêm trong Danh mục hàng hóa.
+                Chưa có mặt hàng sản xuất. Hãy thêm trong Danh mục hàng hóa.
               </p>
             )}
           </div>

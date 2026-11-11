@@ -57,16 +57,14 @@ export function ProductionStatusBadge({
 }
 
 export function ItemTypeBadge({ type }: { type: ItemType }) {
+  const tone =
+    type === "thanh_pham"
+      ? "border-blue-200 bg-blue-50 text-blue-700"
+      : type === "ban_thanh_pham"
+        ? "border-purple-200 bg-purple-50 text-purple-700"
+        : "border-slate-200 bg-slate-50 text-slate-600";
   return (
-    <Badge
-      variant="outline"
-      className={cn(
-        "font-normal",
-        type === "thanh_pham"
-          ? "border-blue-200 bg-blue-50 text-blue-700"
-          : "border-slate-200 bg-slate-50 text-slate-600",
-      )}
-    >
+    <Badge variant="outline" className={cn("font-normal", tone)}>
       {ITEM_TYPE_LABELS[type]}
     </Badge>
   );

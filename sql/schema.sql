@@ -13,7 +13,7 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type public.item_type as enum ('nguyen_lieu', 'thanh_pham');
+  create type public.item_type as enum ('nguyen_lieu', 'ban_thanh_pham', 'thanh_pham');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
@@ -408,9 +408,9 @@ begin
   end if;
 
   if not exists (
-    select 1 from public.items where id = p_product_id and type = 'thanh_pham'
+    select 1 from public.items where id = p_product_id and type in ('thanh_pham', 'ban_thanh_pham')
   ) then
-    raise exception 'Thành phẩm không hợp lệ';
+    raise exception 'Thành phẩm hoặc Bán thành phẩm không hợp lệ';
   end if;
 
   if p_output_quantity is null or p_output_quantity <= 0 then
@@ -421,7 +421,7 @@ begin
   from jsonb_array_elements(coalesce(p_items, '[]'::jsonb));
 
   if v_count = 0 then
-    raise exception 'Công thức phải có ít nhất một nguyên liệu';
+    raise exception 'Công thức phải có ít nhất một nguyên liệu hoặc bán thành phẩm';
   end if;
 
   select count(*) into v_duplicates
@@ -433,19 +433,20 @@ begin
   ) d;
 
   if v_duplicates > 0 then
-    raise exception 'Nguyên liệu bị lặp trong công thức';
+    raise exception 'Thành phần bị lặp trong công thức';
   end if;
 
   if exists (
     select 1
     from jsonb_array_elements(p_items) e
-    where not exists (
+    where (e ->> 'material_id')::uuid = p_product_id
+    or not exists (
       select 1 from public.items i
-      where i.id = (e ->> 'material_id')::uuid and i.type = 'nguyen_lieu'
+      where i.id = (e ->> 'material_id')::uuid and i.type in ('nguyen_lieu', 'ban_thanh_pham')
     )
     or coalesce((e ->> 'quantity')::numeric, 0) <= 0
   ) then
-    raise exception 'Nguyên liệu hoặc định lượng không hợp lệ';
+    raise exception 'Nguyên liệu, bán thành phẩm hoặc định lượng không hợp lệ';
   end if;
 
   insert into public.boms (product_id, output_quantity, note, updated_at)

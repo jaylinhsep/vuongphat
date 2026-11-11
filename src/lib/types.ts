@@ -1,7 +1,7 @@
 export const ROLES = ["admin", "kho", "san_xuat", "ke_toan"] as const;
 export type Role = (typeof ROLES)[number];
 
-export type ItemType = "nguyen_lieu" | "thanh_pham";
+export type ItemType = "nguyen_lieu" | "ban_thanh_pham" | "thanh_pham";
 
 export type MovementType =
   | "nhap"

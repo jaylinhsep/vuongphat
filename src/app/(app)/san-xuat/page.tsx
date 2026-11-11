@@ -41,11 +41,15 @@ import { getBoms, getItems, getProductionOrders } from "@/lib/queries";
 export default async function SanXuatPage() {
   const user = await requireRole(CAN_ACCESS.sanXuat);
 
-  const [orders, products, boms] = await Promise.all([
+  const [orders, allItems, boms] = await Promise.all([
     getProductionOrders(),
-    getItems("thanh_pham"),
+    getItems(),
     getBoms(),
   ]);
+
+  const products = allItems.filter(
+    (i) => i.type === "thanh_pham" || i.type === "ban_thanh_pham",
+  );
 
   const bomProductIds = new Set(boms.map((bom) => bom.product_id));
   const pending = orders.filter((order) => order.status === "cho_xac_nhan");

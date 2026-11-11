@@ -124,7 +124,7 @@ export function ItemFormDialog({ item }: { item?: InventoryItem }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(["nguyen_lieu", "thanh_pham"] as const).map((value) => (
+                  {(["nguyen_lieu", "ban_thanh_pham", "thanh_pham"] as const).map((value) => (
                     <SelectItem key={value} value={value}>
                       {ITEM_TYPE_LABELS[value]}
                     </SelectItem>

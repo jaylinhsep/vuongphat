@@ -19,6 +19,9 @@ do $$ begin
   create type public.purchase_order_status as enum ('cho_xac_nhan', 'da_nhap', 'huy');
 exception when duplicate_object then null; end $$;
 
+-- Thêm giá trị 'ban_thanh_pham' vào item_type enum nếu chưa có
+alter type public.item_type add value if not exists 'ban_thanh_pham';
+
 -- ---------------------------------------------------------------------------
 -- 2. BẢNG KHÁCH HÀNG & ĐƠN BÁN HÀNG
 -- ---------------------------------------------------------------------------
@@ -516,7 +519,89 @@ begin
 end;
 $$;
 
+-- Cập nhật hàm save_bom hỗ trợ Bán thành phẩm làm đầu ra hoặc đầu vào BOM
+create or replace function public.save_bom(
+  p_product_id uuid,
+  p_output_quantity numeric,
+  p_note text,
+  p_items jsonb
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_bom_id uuid;
+  v_count integer;
+  v_duplicates integer;
+begin
+  if public.my_role() not in ('admin', 'san_xuat') then
+    raise exception 'Bạn không có quyền thiết lập công thức';
+  end if;
+
+  if not exists (
+    select 1 from public.items where id = p_product_id and type in ('thanh_pham', 'ban_thanh_pham')
+  ) then
+    raise exception 'Thành phẩm hoặc Bán thành phẩm không hợp lệ';
+  end if;
+
+  if p_output_quantity is null or p_output_quantity <= 0 then
+    raise exception 'Số lượng đầu ra phải lớn hơn 0';
+  end if;
+
+  select count(*) into v_count
+  from jsonb_array_elements(coalesce(p_items, '[]'::jsonb));
+
+  if v_count = 0 then
+    raise exception 'Công thức phải có ít nhất một nguyên liệu hoặc bán thành phẩm';
+  end if;
+
+  select count(*) into v_duplicates
+  from (
+    select value ->> 'material_id' as material_id
+    from jsonb_array_elements(p_items)
+    group by 1
+    having count(*) > 1
+  ) d;
+
+  if v_duplicates > 0 then
+    raise exception 'Thành phần bị lặp trong công thức';
+  end if;
+
+  if exists (
+    select 1
+    from jsonb_array_elements(p_items) e
+    where (e ->> 'material_id')::uuid = p_product_id
+    or not exists (
+      select 1 from public.items i
+      where i.id = (e ->> 'material_id')::uuid and i.type in ('nguyen_lieu', 'ban_thanh_pham')
+    )
+    or coalesce((e ->> 'quantity')::numeric, 0) <= 0
+  ) then
+    raise exception 'Nguyên liệu, bán thành phẩm hoặc định lượng không hợp lệ';
+  end if;
+
+  insert into public.boms (product_id, output_quantity, note, updated_at)
+  values (p_product_id, p_output_quantity, p_note, now())
+  on conflict (product_id) do update
+    set output_quantity = excluded.output_quantity,
+        note = excluded.note,
+        updated_at = now()
+  returning id into v_bom_id;
+
+  delete from public.bom_items where bom_id = v_bom_id;
+
+  insert into public.bom_items (bom_id, material_id, quantity)
+  select v_bom_id, (e ->> 'material_id')::uuid, (e ->> 'quantity')::numeric
+  from jsonb_array_elements(p_items) e;
+
+  return v_bom_id;
+end;
+$$;
+
 -- Cấp quyền thực thi
+grant execute on function public.save_bom(uuid, numeric, text, jsonb) to authenticated;
 grant execute on function public.confirm_sales_order(uuid) to authenticated;
 grant execute on function public.pay_sales_order(uuid, numeric, public.payment_method, text) to authenticated;
 grant execute on function public.confirm_purchase_order(uuid) to authenticated;

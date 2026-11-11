@@ -18,7 +18,11 @@ export async function GET(request: Request) {
   const typeParam = searchParams.get("type");
 
   let inventory = await getInventory(q);
-  if (typeParam === "nguyen_lieu" || typeParam === "thanh_pham") {
+  if (
+    typeParam === "nguyen_lieu" ||
+    typeParam === "thanh_pham" ||
+    typeParam === "ban_thanh_pham"
+  ) {
     inventory = inventory.filter((item) => item.type === typeParam);
   }
 

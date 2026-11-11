@@ -91,6 +91,7 @@ function seed(): DemoState {
     { id: "nl-003", code: "NL003", name: "Bơ lạt", unit: "kg", type: "nguyen_lieu", unit_price: 120_000, min_stock: 5, created_at: daysAgo(120) },
     { id: "nl-004", code: "NL004", name: "Trứng gà", unit: "quả", type: "nguyen_lieu", unit_price: 3_500, min_stock: 50, created_at: daysAgo(120) },
     { id: "nl-005", code: "NL005", name: "Sữa tươi", unit: "lít", type: "nguyen_lieu", unit_price: 30_000, min_stock: 10, created_at: daysAgo(120) },
+    { id: "btp-001", code: "BTP001", name: "Cốt bánh bông lan 20cm", unit: "cốt", type: "ban_thanh_pham", unit_price: 45_000, min_stock: 10, created_at: daysAgo(100) },
     { id: "tp-001", code: "TP001", name: "Bánh mì bơ", unit: "cái", type: "thanh_pham", unit_price: 15_000, min_stock: 20, created_at: daysAgo(120) },
     { id: "tp-002", code: "TP002", name: "Bánh kem sữa", unit: "cái", type: "thanh_pham", unit_price: 220_000, min_stock: 5, created_at: daysAgo(120) },
   ];
@@ -132,6 +133,7 @@ function seed(): DemoState {
   addMovement({ itemId: "nl-003", type: "nhap", quantity: 40, unitPrice: 115_000, supplierId: "ncc-002", note: "Nhập đầu kỳ", createdAt: daysAgo(30) });
   addMovement({ itemId: "nl-004", type: "nhap", quantity: 600, unitPrice: 3_200, supplierId: "ncc-002", note: "Nhập đầu kỳ", createdAt: daysAgo(30) });
   addMovement({ itemId: "nl-005", type: "nhap", quantity: 8, unitPrice: 28_000, supplierId: "ncc-002", note: "Nhập đầu kỳ", createdAt: daysAgo(30) });
+  addMovement({ itemId: "btp-001", type: "nhap", quantity: 15, unitPrice: 45_000, note: "Tồn đầu kỳ bán thành phẩm", createdAt: daysAgo(30) });
   addMovement({ itemId: "tp-001", type: "nhap", quantity: 30, unitPrice: 10_000, note: "Tồn đầu kỳ", createdAt: daysAgo(30) });
   addMovement({ itemId: "tp-002", type: "nhap", quantity: 8, unitPrice: 120_000, note: "Tồn đầu kỳ", createdAt: daysAgo(30) });
   addMovement({ itemId: "nl-001", type: "nhap", quantity: 50, unitPrice: 25_000, supplierId: "ncc-001", note: "Bổ sung bột", createdAt: daysAgo(12) });
@@ -204,18 +206,30 @@ function seed(): DemoState {
       ],
     },
     {
+      id: "bom-003",
+      product_id: "btp-001",
+      output_quantity: 1,
+      note: "Công thức chuẩn cho 1 cốt bánh bông lan 20cm",
+      created_at: daysAgo(50),
+      updated_at: daysAgo(15),
+      items: [
+        { id: "bom-item-010", bom_id: "bom-003", material_id: "nl-001", quantity: 0.2 },
+        { id: "bom-item-011", bom_id: "bom-003", material_id: "nl-002", quantity: 0.1 },
+        { id: "bom-item-012", bom_id: "bom-003", material_id: "nl-004", quantity: 3 },
+      ],
+    },
+    {
       id: "bom-002",
       product_id: "tp-002",
       output_quantity: 1,
-      note: "Bánh kem cỡ 20cm",
+      note: "Bánh kem cỡ 20cm (dùng cốt bánh BTP + kem sữa)",
       created_at: daysAgo(45),
       updated_at: daysAgo(20),
       items: [
-        { id: "bom-item-005", bom_id: "bom-002", material_id: "nl-001", quantity: 0.3 },
-        { id: "bom-item-006", bom_id: "bom-002", material_id: "nl-002", quantity: 0.15 },
-        { id: "bom-item-007", bom_id: "bom-002", material_id: "nl-003", quantity: 0.1 },
-        { id: "bom-item-008", bom_id: "bom-002", material_id: "nl-004", quantity: 2 },
-        { id: "bom-item-009", bom_id: "bom-002", material_id: "nl-005", quantity: 0.2 },
+        { id: "bom-item-005", bom_id: "bom-002", material_id: "btp-001", quantity: 1 },
+        { id: "bom-item-006", bom_id: "bom-002", material_id: "nl-003", quantity: 0.1 },
+        { id: "bom-item-007", bom_id: "bom-002", material_id: "nl-005", quantity: 0.2 },
+        { id: "bom-item-008", bom_id: "bom-002", material_id: "nl-002", quantity: 0.05 },
       ],
     },
   ];
@@ -883,8 +897,10 @@ export function demoSaveBom(input: {
   lines: { materialId: string; quantity: number }[];
 }): void {
   const state = db();
-  const product = state.items.find((item) => item.id === input.productId && item.type === "thanh_pham");
-  if (!product) throw new Error("Thành phẩm không hợp lệ");
+  const product = state.items.find(
+    (item) => item.id === input.productId && (item.type === "thanh_pham" || item.type === "ban_thanh_pham"),
+  );
+  if (!product) throw new Error("Sản phẩm không hợp lệ");
   if (!Number.isFinite(input.outputQuantity) || input.outputQuantity <= 0) {
     throw new Error("Số lượng đầu ra phải lớn hơn 0");
   }
@@ -892,12 +908,15 @@ export function demoSaveBom(input: {
 
   const seen = new Set<string>();
   for (const line of input.lines) {
-    if (seen.has(line.materialId)) throw new Error("Nguyên liệu bị lặp trong công thức");
+    if (line.materialId === input.productId) {
+      throw new Error("Không thể dùng chính sản phẩm làm thành phần");
+    }
+    if (seen.has(line.materialId)) throw new Error("Thành phần bị lặp trong công thức");
     seen.add(line.materialId);
     const material = state.items.find(
-      (item) => item.id === line.materialId && item.type === "nguyen_lieu",
+      (item) => item.id === line.materialId && (item.type === "nguyen_lieu" || item.type === "ban_thanh_pham"),
     );
-    if (!material) throw new Error("Nguyên liệu không hợp lệ");
+    if (!material) throw new Error("Nguyên liệu hoặc bán thành phẩm không hợp lệ");
     if (!Number.isFinite(line.quantity) || line.quantity <= 0) {
       throw new Error("Định lượng phải lớn hơn 0");
     }
@@ -953,8 +972,10 @@ export function demoCreateOrder(input: {
   note?: string | null;
 }): void {
   const state = db();
-  const product = state.items.find((item) => item.id === input.productId && item.type === "thanh_pham");
-  if (!product) throw new Error("Thành phẩm không hợp lệ");
+  const product = state.items.find(
+    (item) => item.id === input.productId && (item.type === "thanh_pham" || item.type === "ban_thanh_pham"),
+  );
+  if (!product) throw new Error("Sản phẩm không hợp lệ");
   if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
     throw new Error("Số lượng phải lớn hơn 0");
   }

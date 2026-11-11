@@ -34,6 +34,7 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
 
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   nguyen_lieu: "Nguyên liệu",
+  ban_thanh_pham: "Bán thành phẩm",
   thanh_pham: "Thành phẩm",
 };
 

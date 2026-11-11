@@ -38,7 +38,7 @@ export default async function DanhMucPage() {
     <div className="space-y-6">
       <PageHeader
         title="Danh mục hàng hóa"
-        description="Khai báo nguyên liệu, thành phẩm và nhà cung cấp dùng trong hệ thống."
+        description="Khai báo nguyên liệu, bán thành phẩm, thành phẩm và nhà cung cấp dùng trong hệ thống."
       >
         {canWrite && (
           <>
