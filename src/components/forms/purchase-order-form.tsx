@@ -125,48 +125,56 @@ export function CreatePurchaseOrderDialog({
           <PlusIcon className="size-4" /> Tạo đơn mua hàng
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-4xl max-w-4xl w-full">
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-none sm:max-w-3xl lg:max-w-4xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg">
-            <TruckIcon className="size-5 text-primary" /> Lập đơn đặt mua hàng mới
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <TruckIcon className="size-5 text-primary shrink-0" />
+            <span>Lập đơn đặt mua hàng mới</span>
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs sm:text-sm">
             Tạo đơn đặt mua nguyên vật liệu, hàng hóa từ nhà cung cấp.
           </DialogDescription>
         </DialogHeader>
 
         <form action={formAction} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="sm:col-span-2 space-y-2">
-              <Label htmlFor="supplier_id">Nhà cung cấp *</Label>
+          {/* Thông tin chung */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+            <div className="sm:col-span-2 space-y-1.5">
+              <Label htmlFor="supplier_id" className="text-xs sm:text-sm">
+                Nhà cung cấp *
+              </Label>
               <Select name="supplier_id" required>
-                <SelectTrigger id="supplier_id" className="w-full">
+                <SelectTrigger id="supplier_id" className="w-full text-xs sm:text-sm">
                   <SelectValue placeholder="Chọn nhà cung cấp" />
                 </SelectTrigger>
                 <SelectContent>
                   {suppliers.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
+                    <SelectItem key={s.id} value={s.id} className="text-xs sm:text-sm">
                       {s.name} {s.phone ? `(${s.phone})` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="order_date">Ngày đặt *</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="order_date" className="text-xs sm:text-sm">
+                Ngày đặt *
+              </Label>
               <Input
                 id="order_date"
                 name="order_date"
                 type="date"
                 defaultValue={todayISO()}
                 required
+                className="text-xs sm:text-sm"
               />
             </div>
           </div>
 
-          <div className="space-y-2">
+          {/* Danh sách mặt hàng mua */}
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <Label className="font-semibold text-sm">
+              <Label className="font-semibold text-xs sm:text-sm">
                 Danh sách nguyên vật liệu / hàng mua *
               </Label>
               <Button
@@ -174,144 +182,238 @@ export function CreatePurchaseOrderDialog({
                 variant="outline"
                 size="sm"
                 onClick={addLine}
-                className="h-8 text-xs"
+                className="h-7 sm:h-8 text-xs"
               >
                 <PlusIcon className="size-3.5" /> Thêm mặt hàng
               </Button>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border bg-card">
-              <div className="min-w-[640px]">
-                {/* Header hàng */}
-                <div className="flex items-center gap-2 border-b bg-muted/60 px-3 py-2 text-xs font-semibold text-muted-foreground">
-                  <span className="w-8 text-center">STT</span>
-                  <span className="flex-1">Mặt hàng</span>
-                  <span className="w-24 text-right">Số lượng</span>
-                  <span className="w-16 text-center">ĐVT</span>
-                  <span className="w-32 text-right">Đơn giá mua (đ)</span>
-                  <span className="w-32 text-right">Thành tiền</span>
-                  <span className="w-9 text-center"></span>
-                </div>
+            {/* Giao diện Mobile: dạng thẻ (Card) tối ưu cảm ứng */}
+            <div className="space-y-2.5 sm:hidden">
+              {lines.map((line, idx) => {
+                const selectedItem = items.find((i) => i.id === line.itemId);
+                const numQty = parseFloat(line.quantity) || 0;
+                const numPrice = parseFloat(line.unitPrice) || 0;
+                const lineTotal = numQty * numPrice;
 
-                {/* Danh sách các dòng mặt hàng */}
-                <div className="max-h-72 divide-y overflow-y-auto">
-                  {lines.map((line, idx) => {
-                    const selectedItem = items.find((i) => i.id === line.itemId);
-                    const numQty = parseFloat(line.quantity) || 0;
-                    const numPrice = parseFloat(line.unitPrice) || 0;
-                    const lineTotal = numQty * numPrice;
-
-                    return (
-                      <div
-                        key={line.id}
-                        className="flex items-center gap-2 px-3 py-2 hover:bg-muted/20 transition-colors"
-                      >
-                        <span className="w-8 text-center text-xs font-mono text-muted-foreground">
-                          {idx + 1}
-                        </span>
-
-                        <div className="flex-1">
-                          <Select
-                            value={line.itemId}
-                            onValueChange={(val) => updateItem(line.id, val)}
-                          >
-                            <SelectTrigger className="h-8 text-xs w-full">
-                              <SelectValue placeholder="Chọn hàng mua..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {items.map((item) => {
-                                const typeBadge =
-                                  item.type === "nguyen_lieu"
-                                    ? "[NL] "
-                                    : item.type === "ban_thanh_pham"
-                                      ? "[BTP] "
-                                      : "[TP] ";
-                                return (
-                                  <SelectItem key={item.id} value={item.id}>
-                                    {typeBadge}
-                                    {item.name} ({item.code}) — Tồn: {item.on_hand}{" "}
-                                    {item.unit}
-                                  </SelectItem>
-                                );
-                              })}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="w-24">
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            value={line.quantity}
-                            min={0.001}
-                            step="any"
-                            onChange={(e) => updateQuantity(line.id, e.target.value)}
-                            className="h-8 text-xs text-right font-medium"
-                          />
-                        </div>
-
-                        <span className="w-16 text-center text-xs font-medium text-muted-foreground truncate">
-                          {selectedItem?.unit ?? "—"}
-                        </span>
-
-                        <div className="w-32">
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            value={line.unitPrice}
-                            min={0}
-                            step="1000"
-                            onChange={(e) => updateUnitPrice(line.id, e.target.value)}
-                            className="h-8 text-xs text-right"
-                          />
-                        </div>
-
-                        <div className="w-32 text-right font-semibold text-xs text-neutral-900">
-                          {formatCurrency(lineTotal)}
-                        </div>
-
-                        <div className="w-9 text-center">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-7 text-muted-foreground hover:text-rose-600"
-                            onClick={() => removeLine(line.id)}
-                            disabled={lines.length === 1}
-                            title="Xóa dòng"
-                          >
-                            <Trash2Icon className="size-3.5" />
-                          </Button>
-                        </div>
+                return (
+                  <div
+                    key={line.id}
+                    className="rounded-lg border bg-muted/20 p-3 space-y-2.5 shadow-xs"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                        {idx + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <Select
+                          value={line.itemId}
+                          onValueChange={(val) => updateItem(line.id, val)}
+                        >
+                          <SelectTrigger className="h-8 text-xs w-full">
+                            <SelectValue placeholder="Chọn hàng mua..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {items.map((item) => {
+                              const typeBadge =
+                                item.type === "nguyen_lieu"
+                                  ? "[NL] "
+                                  : item.type === "ban_thanh_pham"
+                                    ? "[BTP] "
+                                    : "[TP] ";
+                              return (
+                                <SelectItem key={item.id} value={item.id} className="text-xs">
+                                  {typeBadge}{item.name} ({item.code}) — Tồn: {item.on_hand} {item.unit}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    );
-                  })}
-                </div>
+                      {lines.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 text-muted-foreground hover:text-rose-600 shrink-0"
+                          onClick={() => removeLine(line.id)}
+                          title="Xóa dòng"
+                        >
+                          <Trash2Icon className="size-3.5" />
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-medium text-muted-foreground">
+                          Số lượng ({selectedItem?.unit ?? "—"})
+                        </span>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={line.quantity}
+                          min={0.001}
+                          step="any"
+                          onChange={(e) => updateQuantity(line.id, e.target.value)}
+                          className="h-8 text-xs text-right font-medium"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-medium text-muted-foreground">
+                          Đơn giá mua (đ)
+                        </span>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={line.unitPrice}
+                          min={0}
+                          step="1000"
+                          onChange={(e) => updateUnitPrice(line.id, e.target.value)}
+                          className="h-8 text-xs text-right"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t text-xs">
+                      <span className="text-muted-foreground">Thành tiền:</span>
+                      <span className="font-bold text-blue-700">
+                        {formatCurrency(lineTotal)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Giao diện Desktop / Tablet (>= 640px): Dạng bảng chuẩn */}
+            <div className="hidden sm:block rounded-lg border bg-card overflow-hidden">
+              <div className="flex items-center gap-2 border-b bg-muted/60 px-3 py-2 text-xs font-semibold text-muted-foreground">
+                <span className="w-8 text-center">STT</span>
+                <span className="flex-1">Mặt hàng</span>
+                <span className="w-24 text-right">Số lượng</span>
+                <span className="w-16 text-center">ĐVT</span>
+                <span className="w-32 text-right">Đơn giá mua (đ)</span>
+                <span className="w-32 text-right">Thành tiền</span>
+                <span className="w-9 text-center"></span>
+              </div>
+
+              <div className="max-h-72 divide-y overflow-y-auto">
+                {lines.map((line, idx) => {
+                  const selectedItem = items.find((i) => i.id === line.itemId);
+                  const numQty = parseFloat(line.quantity) || 0;
+                  const numPrice = parseFloat(line.unitPrice) || 0;
+                  const lineTotal = numQty * numPrice;
+
+                  return (
+                    <div
+                      key={line.id}
+                      className="flex items-center gap-2 px-3 py-2 hover:bg-muted/20 transition-colors"
+                    >
+                      <span className="w-8 text-center text-xs font-mono text-muted-foreground">
+                        {idx + 1}
+                      </span>
+
+                      <div className="flex-1">
+                        <Select
+                          value={line.itemId}
+                          onValueChange={(val) => updateItem(line.id, val)}
+                        >
+                          <SelectTrigger className="h-8 text-xs w-full">
+                            <SelectValue placeholder="Chọn hàng mua..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {items.map((item) => {
+                              const typeBadge =
+                                item.type === "nguyen_lieu"
+                                  ? "[NL] "
+                                  : item.type === "ban_thanh_pham"
+                                    ? "[BTP] "
+                                    : "[TP] ";
+                              return (
+                                <SelectItem key={item.id} value={item.id}>
+                                  {typeBadge}{item.name} ({item.code}) — Tồn: {item.on_hand} {item.unit}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="w-24">
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={line.quantity}
+                          min={0.001}
+                          step="any"
+                          onChange={(e) => updateQuantity(line.id, e.target.value)}
+                          className="h-8 text-xs text-right font-medium"
+                        />
+                      </div>
+
+                      <span className="w-16 text-center text-xs font-medium text-muted-foreground truncate">
+                        {selectedItem?.unit ?? "—"}
+                      </span>
+
+                      <div className="w-32">
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={line.unitPrice}
+                          min={0}
+                          step="1000"
+                          onChange={(e) => updateUnitPrice(line.id, e.target.value)}
+                          className="h-8 text-xs text-right"
+                        />
+                      </div>
+
+                      <div className="w-32 text-right font-semibold text-xs text-neutral-900">
+                        {formatCurrency(lineTotal)}
+                      </div>
+
+                      <div className="w-9 text-center">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 text-muted-foreground hover:text-rose-600"
+                          onClick={() => removeLine(line.id)}
+                          disabled={lines.length === 1}
+                          title="Xóa dòng"
+                        >
+                          <Trash2Icon className="size-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Tổng cộng */}
-            <div className="flex justify-between items-center rounded-lg border bg-neutral-100/70 px-4 py-3">
-              <span className="font-semibold text-sm">Tổng cộng đơn mua:</span>
-              <span className="text-xl font-bold text-blue-700">
+            {/* Tổng cộng đơn mua */}
+            <div className="flex justify-between items-center rounded-lg border bg-neutral-100/70 px-3.5 py-2.5 sm:px-4 sm:py-3">
+              <span className="font-semibold text-xs sm:text-sm">Tổng cộng đơn mua:</span>
+              <span className="text-lg sm:text-xl font-bold text-blue-700">
                 {formatCurrency(totalAmount)}
               </span>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="note">Ghi chú đơn mua hàng</Label>
+          {/* Ghi chú */}
+          <div className="space-y-1.5">
+            <Label htmlFor="note" className="text-xs sm:text-sm">Ghi chú đơn mua hàng</Label>
             <Textarea
               id="note"
               name="note"
               placeholder="Điều khoản giao nhận, ghi chú thêm..."
-              className="h-16 resize-none"
+              className="h-16 resize-none text-xs sm:text-sm"
             />
           </div>
 
           {state.message && (
             <p
-              className={`text-sm ${
+              className={`text-xs sm:text-sm ${
                 state.status === "error" ? "text-rose-600" : "text-emerald-600"
               }`}
             >
@@ -319,15 +421,20 @@ export function CreatePurchaseOrderDialog({
             </p>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => setOpen(false)}
+              className="w-full sm:w-auto text-xs sm:text-sm"
             >
               Hủy
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button
+              type="submit"
+              disabled={isPending}
+              className="w-full sm:w-auto text-xs sm:text-sm"
+            >
               {isPending ? "Đang tạo..." : "Tạo đơn mua hàng"}
             </Button>
           </DialogFooter>
