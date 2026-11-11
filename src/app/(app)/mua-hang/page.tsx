@@ -156,8 +156,8 @@ export default async function MuaHangPage({
         <CardHeader>
           <CardTitle>Danh sách đơn mua hàng ({orders.length})</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
+        <CardContent className="p-0 sm:p-6">
+          <div className="overflow-x-auto border-y sm:rounded-md sm:border">
             <Table>
               <TableHeader>
                 <TableRow>

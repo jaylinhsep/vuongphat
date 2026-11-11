@@ -103,8 +103,8 @@ export default async function CongNoPage() {
             <CardHeader>
               <CardTitle>Công nợ Khách hàng</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="rounded-md border">
+            <CardContent className="p-0 sm:p-6">
+              <div className="overflow-x-auto border-y sm:rounded-md sm:border">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -178,8 +178,8 @@ export default async function CongNoPage() {
             <CardHeader>
               <CardTitle>Công nợ Nhà cung cấp</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="rounded-md border">
+            <CardContent className="p-0 sm:p-6">
+              <div className="overflow-x-auto border-y sm:rounded-md sm:border">
                 <Table>
                   <TableHeader>
                     <TableRow>

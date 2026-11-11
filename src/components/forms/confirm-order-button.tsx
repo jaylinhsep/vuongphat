@@ -91,7 +91,7 @@ export function ConfirmOrderButton({
           <CheckCircle2Icon className="text-emerald-600" /> Nghiệm thu
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="w-[calc(100vw-1.5rem)] sm:max-w-lg">
         <form onSubmit={handleConfirm}>
           <DialogHeader>
             <DialogTitle>Nghiệm thu hoàn thành lệnh {orderCode}</DialogTitle>
