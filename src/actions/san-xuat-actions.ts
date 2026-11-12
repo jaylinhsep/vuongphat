@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/config";
 import {
   demoConfirmOrder,
+  demoCreateItem,
   demoCreateOrder,
   demoDeleteBom,
   demoSaveBom,
@@ -14,6 +15,7 @@ import { parseNumber, todayISO } from "@/lib/format";
 import { CAN_ACCESS } from "@/lib/labels";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isMissingTableError } from "@/lib/supabase/errors";
+import type { ItemType } from "@/lib/types";
 
 async function requireProductionWrite() {
   const user = await getCurrentUser();
@@ -40,6 +42,7 @@ function refreshSanXuat() {
   revalidatePath("/san-xuat/gia-thanh");
   revalidatePath("/kho");
   revalidatePath("/kho/nhap-xuat");
+  revalidatePath("/kho/danh-muc");
 }
 
 export async function saveBomAction(
@@ -49,9 +52,57 @@ export async function saveBomAction(
   try {
     await requireBomWrite();
 
-    const productId = String(formData.get("product_id") ?? "");
+    let productId = String(formData.get("product_id") ?? "");
+    const createNewProduct = formData.get("create_new_product") === "true";
     const outputQuantity = parseNumber(formData.get("output_quantity"));
     const note = String(formData.get("note") ?? "").trim();
+
+    if (createNewProduct) {
+      const newName = String(formData.get("new_product_name") ?? "").trim();
+      const newCode = String(formData.get("new_product_code") ?? "").trim().toUpperCase();
+      const newUnit = String(formData.get("new_product_unit") ?? "").trim() || "kg";
+      const newType = (String(formData.get("new_product_type") ?? "") || "thanh_pham") as ItemType;
+
+      if (!newName) {
+        return { status: "error", message: "Vui lòng nhập tên thành phẩm mới." };
+      }
+      if (!newCode) {
+        return { status: "error", message: "Vui lòng nhập mã thành phẩm mới." };
+      }
+
+      if (!isSupabaseConfigured()) {
+        productId = demoCreateItem({
+          name: newName,
+          code: newCode,
+          unit: newUnit,
+          type: newType,
+          unitPrice: 0,
+          minStock: 0,
+        });
+      } else {
+        const supabase = await createSupabaseServerClient();
+        const { data: itemData, error: itemError } = await supabase
+          .from("items")
+          .insert({
+            name: newName,
+            code: newCode,
+            unit: newUnit,
+            type: newType,
+            unit_price: 0,
+            min_stock: 0,
+          })
+          .select("id")
+          .single();
+
+        if (itemError) {
+          if (itemError.message.includes("unique") || itemError.code === "23505") {
+            throw new Error(`Mã hàng "${newCode}" đã tồn tại. Vui lòng chọn mã khác.`);
+          }
+          throw new Error(itemError.message);
+        }
+        productId = itemData.id;
+      }
+    }
 
     let lines: { materialId: string; quantity: number }[] = [];
     try {
@@ -71,7 +122,7 @@ export async function saveBomAction(
       return { status: "error", message: "Dữ liệu công thức không hợp lệ." };
     }
 
-    if (!productId) return { status: "error", message: "Vui lòng chọn thành phẩm." };
+    if (!productId) return { status: "error", message: "Vui lòng chọn hoặc tạo thành phẩm." };
     if (!Number.isFinite(outputQuantity) || outputQuantity <= 0) {
       return { status: "error", message: "Số lượng đầu ra phải lớn hơn 0." };
     }
@@ -96,7 +147,12 @@ export async function saveBomAction(
     }
 
     refreshSanXuat();
-    return { status: "success", message: "Đã lưu công thức định lượng." };
+    return {
+      status: "success",
+      message: createNewProduct
+        ? "Đã tạo thành phẩm mới và lưu công thức BOM thành công."
+        : "Đã lưu công thức định lượng.",
+    };
   } catch (error) {
     return errorState(error);
   }

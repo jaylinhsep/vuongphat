@@ -798,7 +798,7 @@ export function demoCreateItem(input: {
   packSize?: number | null;
   packUnit?: string | null;
   onHand?: number;
-}): void {
+}): string {
   const state = db();
   const code = input.code.trim().toUpperCase();
   if (state.items.some((item) => item.code.toLowerCase() === code.toLowerCase())) {
@@ -819,6 +819,7 @@ export function demoCreateItem(input: {
     created_at: nowISO(),
   });
   applyStockTarget(state, id, input.onHand ?? 0, input.unitPrice || 0, "Nhập tồn kho đầu kỳ");
+  return id;
 }
 
 export function demoUpdateItem(input: {

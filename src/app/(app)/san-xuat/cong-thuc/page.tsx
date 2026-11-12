@@ -1,5 +1,6 @@
 import { FlaskConicalIcon, LayersIcon, PencilLineIcon } from "lucide-react";
 import { BomForm } from "@/components/forms/bom-form";
+import { CloneBomDialog } from "@/components/forms/clone-bom-dialog";
 import { DeleteBomDialog } from "@/components/forms/delete-bom-dialog";
 import { EditBomDialog } from "@/components/forms/edit-bom-dialog";
 import { PageHeader } from "@/components/page-header";
@@ -102,6 +103,11 @@ export default async function CongThucPage() {
                         <Badge variant="secondary" className="hidden sm:inline-flex">
                           <LayersIcon /> {bom.items.length} nguyên liệu
                         </Badge>
+                        <CloneBomDialog
+                          bom={bom}
+                          products={products}
+                          materials={materials}
+                        />
                         <EditBomDialog bom={bom} materials={materials} />
                         <DeleteBomDialog bom={bom} />
                       </div>
