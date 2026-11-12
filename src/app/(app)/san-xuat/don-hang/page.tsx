@@ -168,19 +168,41 @@ export default async function SanXuatDonHangPage({
 
                     {/* Items (No Price) */}
                     <div className="text-xs space-y-1">
-                      <span className="text-neutral-500 font-medium">Mặt hàng giao:</span>
-                      <div className="space-y-1 pl-1">
-                        {order.items.map((item) => (
-                          <div
-                            key={item.id}
-                            className="flex justify-between items-center text-neutral-800 bg-neutral-100/60 rounded px-2 py-1"
-                          >
-                            <span className="font-medium">• {item.item_name}</span>
-                            <span className="font-bold text-neutral-900">
-                              {item.quantity} {item.item_unit}
-                            </span>
-                          </div>
-                        ))}
+                      <span className="text-neutral-500 font-medium">Mặt hàng xuất giao:</span>
+                      <div className="space-y-1.5 pl-1">
+                        {order.items.map((item) => {
+                          const numPacks =
+                            item.pack_size && item.pack_size > 0
+                              ? Math.floor(item.quantity / item.pack_size)
+                              : null;
+                          return (
+                            <div
+                              key={item.id}
+                              className="text-neutral-800 bg-neutral-100/70 rounded px-2.5 py-1.5 space-y-0.5"
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="font-semibold">• {item.item_name}</span>
+                                <span className="font-bold text-neutral-900">
+                                  {item.quantity} {item.item_unit}
+                                </span>
+                              </div>
+                              {(item.packing_spec || numPacks !== null) && (
+                                <div className="text-[11px] text-emerald-800 flex justify-between font-medium pt-0.5">
+                                  <span>
+                                    Quy cách:{" "}
+                                    {item.packing_spec ||
+                                      `${item.pack_size}${item.item_unit}/${item.pack_unit || "thùng"}`}
+                                  </span>
+                                  {numPacks !== null && (
+                                    <span className="font-bold">
+                                      ~ {numPacks} {item.pack_unit || "thùng"}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -254,14 +276,26 @@ export default async function SanXuatDonHangPage({
                           )}
                         </TableCell>
                         <TableCell className="text-xs">
-                          {order.items.map((item) => (
-                            <div key={item.id} className="leading-tight py-0.5">
-                              • <span className="font-medium">{item.item_name}</span>:{" "}
-                              <span className="font-bold text-neutral-900">
-                                {item.quantity} {item.item_unit}
-                              </span>
-                            </div>
-                          ))}
+                          {order.items.map((item) => {
+                            const numPacks =
+                              item.pack_size && item.pack_size > 0
+                                ? Math.floor(item.quantity / item.pack_size)
+                                : null;
+                            return (
+                              <div key={item.id} className="leading-tight py-0.5">
+                                • <span className="font-semibold">{item.item_name}</span>:{" "}
+                                <span className="font-bold text-neutral-900">
+                                  {item.quantity} {item.item_unit}
+                                </span>
+                                {(item.packing_spec || numPacks !== null) && (
+                                  <span className="text-[11px] text-emerald-800 ml-1.5 font-medium bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                                    {numPacks !== null ? `~ ${numPacks} ${item.pack_unit || "thùng"}` : ""}
+                                    {item.packing_spec ? ` (${item.packing_spec})` : ""}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
                         </TableCell>
                         <TableCell className="text-center">
                           <SalesOrderStatusBadge status={order.status} />

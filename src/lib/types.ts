@@ -24,6 +24,9 @@ export type Item = {
   type: ItemType;
   unit_price: number;
   min_stock: number;
+  packing_spec?: string | null;
+  pack_size?: number | null;
+  pack_unit?: string | null;
   created_at: string;
 };
 
@@ -294,6 +297,9 @@ export type SalesOrderItemRow = SalesOrderItem & {
   item_name: string;
   item_code: string;
   item_unit: string;
+  packing_spec?: string | null;
+  pack_size?: number | null;
+  pack_unit?: string | null;
 };
 
 export type SalesOrder = {

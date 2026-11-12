@@ -66,16 +66,17 @@ export default async function DanhMucPage() {
                   <TableHead className="whitespace-normal">Tên hàng hóa</TableHead>
                   <TableHead>Loại</TableHead>
                   <TableHead>ĐVT</TableHead>
+                  <TableHead>Quy cách đóng gói</TableHead>
                   <TableHead className="text-right">Đơn giá</TableHead>
                   <TableHead className="text-right">Tồn hiện tại</TableHead>
-                  {canWrite && <TableHead className="w-12" />}
+                  {canWrite && <TableHead className="w-12 text-center">Sửa</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={canWrite ? 7 : 6}
+                      colSpan={canWrite ? 8 : 7}
                       className="py-10 text-center text-sm text-muted-foreground"
                     >
                       Chưa có hàng hóa nào. Bấm “Thêm hàng hóa” để bắt đầu.
@@ -95,6 +96,15 @@ export default async function DanhMucPage() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {item.unit}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {item.packing_spec ? (
+                          <span className="font-medium text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            {item.packing_spec}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground italic">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
                         {formatCurrency(item.unit_price)}

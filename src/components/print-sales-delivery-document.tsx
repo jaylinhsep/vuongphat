@@ -17,6 +17,40 @@ function formatPrintTime(value: Date): string {
   }).format(value);
 }
 
+function computePackageInfo(
+  quantity: number,
+  packSize?: number | null,
+  packUnit?: string | null,
+  itemUnit?: string,
+) {
+  if (!packSize || packSize <= 0) {
+    return {
+      packageText: "—",
+      specText: "Theo bao bì lẻ",
+      packCount: 0,
+    };
+  }
+
+  const pUnit = packUnit || "thùng";
+  const numPacks = Math.floor(quantity / packSize);
+  const remainder = Math.round((quantity % packSize) * 1000) / 1000;
+
+  let packageText = `${numPacks} ${pUnit}`;
+  if (remainder > 0) {
+    if (numPacks > 0) {
+      packageText = `${numPacks} ${pUnit} + ${formatQuantity(remainder)} ${itemUnit || "kg"}`;
+    } else {
+      packageText = `${formatQuantity(remainder)} ${itemUnit || "kg"} (lẻ)`;
+    }
+  }
+
+  return {
+    packageText,
+    specText: `${packSize} ${itemUnit || "kg"}/${pUnit}`,
+    packCount: numPacks,
+  };
+}
+
 export function PrintSalesDeliveryDocument({
   order,
   printerName,
@@ -36,11 +70,19 @@ export function PrintSalesDeliveryDocument({
 
   const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
 
+  // Tính tổng số kiện/thùng (nếu có các mặt hàng theo thùng)
+  const totalPacks = order.items.reduce((sum, item) => {
+    if (item.pack_size && item.pack_size > 0) {
+      return sum + Math.floor(item.quantity / item.pack_size);
+    }
+    return sum;
+  }, 0);
+
   return (
     <div className="flex min-h-screen flex-col items-center bg-muted/40 py-6 print:min-h-0 print:bg-white print:py-0">
       <div className="print-hide mb-4 flex w-[210mm] max-w-full items-center justify-between gap-2 px-1">
         <p className="text-sm text-muted-foreground">
-          Phiếu xuất kho kiêm giao hàng (khổ A4 — không hiện giá tiền).
+          {title} (khổ A4 — thể hiện rõ quy cách đóng gói và số kiện/thùng, không hiện giá tiền).
         </p>
         <div className="flex gap-2">
           <Button size="sm" onClick={() => window.print()}>
@@ -58,7 +100,7 @@ export function PrintSalesDeliveryDocument({
           <div>
             <p className="text-lg font-bold uppercase tracking-wider">CÔNG TY TNHH VƯƠNG PHÁT</p>
             <p className="text-xs text-neutral-600">
-              Hệ thống Quản lý Bán hàng &amp; Kho vận
+              Hệ thống Quản lý Bán hàng &amp; Kho vận — Hóa chất &amp; Dung môi
             </p>
           </div>
           <div className="text-right">
@@ -91,12 +133,12 @@ export function PrintSalesDeliveryDocument({
               <span>{order.customer_phone || "—"}</span>
             </div>
             <div className="flex gap-2">
-              <span className="w-28 shrink-0 text-neutral-600">Ngày giao dự kiến:</span>
-              <span>{order.delivery_date ? formatDate(order.delivery_date) : "Giao ngay"}</span>
+              <span className="w-28 shrink-0 text-neutral-600">Ngày hẹn giao:</span>
+              <span className="font-semibold">{order.delivery_date ? formatDate(order.delivery_date) : "Giao ngay"}</span>
             </div>
             <div className="col-span-2 flex gap-2">
               <span className="w-28 shrink-0 text-neutral-600">Địa chỉ giao:</span>
-              <span className="font-medium text-neutral-800">{order.customer_address || "Giao tại xưởng / theo đơn"}</span>
+              <span className="font-medium text-neutral-800">{order.customer_address || "Giao tại xưởng / theo thỏa thuận"}</span>
             </div>
             {order.note && (
               <div className="col-span-2 flex gap-2">
@@ -116,49 +158,65 @@ export function PrintSalesDeliveryDocument({
           <table className="print-table w-full border-collapse border border-black text-sm">
             <thead>
               <tr className="bg-neutral-100 print:bg-neutral-100">
-                <th className="border border-black px-2 py-1.5 text-center font-bold w-12">
+                <th className="border border-black px-2 py-1.5 text-center font-bold w-10">
                   STT
                 </th>
-                <th className="border border-black px-3 py-1.5 text-left font-bold w-28">
+                <th className="border border-black px-2 py-1.5 text-left font-bold w-24">
                   Mã hàng
                 </th>
                 <th className="border border-black px-3 py-1.5 text-left font-bold">
-                  Tên mặt hàng
+                  Tên mặt hàng / Sản phẩm
                 </th>
-                <th className="border border-black px-3 py-1.5 text-center font-bold w-20">
+                <th className="border border-black px-2 py-1.5 text-center font-bold w-14">
                   ĐVT
                 </th>
-                <th className="border border-black px-3 py-1.5 text-right font-bold w-32">
+                <th className="border border-black px-3 py-1.5 text-right font-bold w-28">
                   Số lượng xuất
                 </th>
-                <th className="border border-black px-3 py-1.5 text-left font-bold w-40">
-                  Ghi chú
+                <th className="border border-black px-3 py-1.5 text-center font-bold w-32">
+                  Quy cách đóng gói
+                </th>
+                <th className="border border-black px-3 py-1.5 text-center font-bold w-36">
+                  Số kiện / thùng
                 </th>
               </tr>
             </thead>
             <tbody>
-              {order.items.map((item, idx) => (
-                <tr key={item.id}>
-                  <td className="border border-black px-2 py-2 text-center font-mono">
-                    {idx + 1}
-                  </td>
-                  <td className="border border-black px-3 py-2 font-mono text-xs">
-                    {item.item_code}
-                  </td>
-                  <td className="border border-black px-3 py-2 font-semibold">
-                    {item.item_name}
-                  </td>
-                  <td className="border border-black px-3 py-2 text-center text-neutral-800">
-                    {item.item_unit}
-                  </td>
-                  <td className="border border-black px-3 py-2 text-right font-bold text-base">
-                    {formatQuantity(item.quantity)}
-                  </td>
-                  <td className="border border-black px-3 py-2 text-xs text-neutral-600">
-                    Hàng mới 100%, đủ quy cách
-                  </td>
-                </tr>
-              ))}
+              {order.items.map((item, idx) => {
+                const pkg = computePackageInfo(
+                  item.quantity,
+                  item.pack_size,
+                  item.pack_unit,
+                  item.item_unit,
+                );
+                const displaySpec = item.packing_spec || pkg.specText;
+
+                return (
+                  <tr key={item.id}>
+                    <td className="border border-black px-2 py-2 text-center font-mono">
+                      {idx + 1}
+                    </td>
+                    <td className="border border-black px-2 py-2 font-mono text-xs">
+                      {item.item_code}
+                    </td>
+                    <td className="border border-black px-3 py-2 font-semibold">
+                      {item.item_name}
+                    </td>
+                    <td className="border border-black px-2 py-2 text-center text-neutral-800">
+                      {item.item_unit}
+                    </td>
+                    <td className="border border-black px-3 py-2 text-right font-bold text-base">
+                      {formatQuantity(item.quantity)}
+                    </td>
+                    <td className="border border-black px-3 py-2 text-center text-xs font-medium text-neutral-800">
+                      {displaySpec}
+                    </td>
+                    <td className="border border-black px-3 py-2 text-center font-bold text-sm bg-neutral-50/50">
+                      {pkg.packageText}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
               <tr className="bg-neutral-50 font-bold">
@@ -166,12 +224,17 @@ export function PrintSalesDeliveryDocument({
                   colSpan={4}
                   className="border border-black px-3 py-2 text-right uppercase tracking-wider"
                 >
-                  Tổng cộng số lượng xuất giao:
+                  Tổng cộng:
                 </td>
                 <td className="border border-black px-3 py-2 text-right text-base text-black">
                   {formatQuantity(totalQuantity)}
                 </td>
-                <td className="border border-black px-3 py-2"></td>
+                <td className="border border-black px-3 py-2 text-right text-xs uppercase tracking-wide">
+                  Tổng kiện đóng gói:
+                </td>
+                <td className="border border-black px-3 py-2 text-center text-sm font-bold text-black">
+                  {totalPacks > 0 ? `${totalPacks} thùng/kiện` : "Theo ĐVT lẻ"}
+                </td>
               </tr>
             </tfoot>
           </table>
@@ -206,7 +269,7 @@ export function PrintSalesDeliveryDocument({
             </div>
           </div>
           <p className="mt-8 text-center text-[11px] italic text-neutral-500">
-            * Vui lòng kiểm tra kỹ số lượng và tình trạng hàng hóa trước khi ký nhận.
+            * Vui lòng kiểm tra kỹ số lượng, quy cách đóng gói và tình trạng nguyên vẹn của hàng hóa trước khi ký nhận.
           </p>
         </div>
       </div>

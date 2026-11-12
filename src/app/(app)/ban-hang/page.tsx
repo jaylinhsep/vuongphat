@@ -54,6 +54,9 @@ export default async function BanHangPage({
     getInventory(),
   ]);
 
+  // Chỉ lấy mặt hàng là thành phẩm cho phân hệ bán hàng
+  const finishedProducts = inventory.filter((item) => item.type === "thanh_pham");
+
   const canWrite = CAN_ACCESS.banHangWrite(user.role);
   const isAdmin = user.role === "admin";
 
@@ -90,7 +93,7 @@ export default async function BanHangPage({
           {canWrite && (
             <CreateSalesOrderDialog
               customers={customers}
-              items={inventory}
+              items={finishedProducts}
             />
           )}
         </div>
@@ -273,7 +276,7 @@ export default async function BanHangPage({
                           <EditSalesOrderDialog
                             order={order}
                             customers={customers}
-                            items={inventory}
+                            items={finishedProducts}
                           />
                         )}
 
@@ -389,7 +392,7 @@ export default async function BanHangPage({
                                 <EditSalesOrderDialog
                                   order={order}
                                   customers={customers}
-                                  items={inventory}
+                                  items={finishedProducts}
                                 />
                               )}
                               {order.status === "cho_xac_nhan" && (

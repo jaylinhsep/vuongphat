@@ -171,6 +171,62 @@ export function ItemFormDialog({ item }: { item?: InventoryItem }) {
                 Ngưỡng cảnh báo khi tồn xuống thấp.
               </p>
             </div>
+
+            {/* Quy cách đóng gói */}
+            <div className="space-y-2 sm:col-span-2 rounded-lg border border-neutral-200 bg-neutral-50/80 p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-neutral-900">
+                  Quy cách đóng gói (Áp dụng khi xuất phiếu bán hàng)
+                </Label>
+                <span className="text-[11px] text-muted-foreground">
+                  Ví dụ: 17kg/thùng, 15kg/thùng
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                <div className="space-y-1">
+                  <Label htmlFor="item-pack-size" className="text-[11px] text-muted-foreground">
+                    Số lượng / kiện ({item?.unit || "kg"})
+                  </Label>
+                  <Input
+                    id="item-pack-size"
+                    name="pack_size"
+                    type="number"
+                    step="any"
+                    min={0.001}
+                    placeholder="VD: 17 hoặc 15"
+                    defaultValue={item?.pack_size ?? ""}
+                    className="h-8 text-xs bg-white"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="item-pack-unit" className="text-[11px] text-muted-foreground">
+                    Đơn vị bao bì
+                  </Label>
+                  <Input
+                    id="item-pack-unit"
+                    name="pack_unit"
+                    placeholder="VD: thùng, can, phuy"
+                    defaultValue={item?.pack_unit ?? "thùng"}
+                    className="h-8 text-xs bg-white"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="item-packing-spec" className="text-[11px] text-muted-foreground">
+                    Mô tả quy cách hiển thị
+                  </Label>
+                  <Input
+                    id="item-packing-spec"
+                    name="packing_spec"
+                    placeholder="VD: 17kg/thùng"
+                    defaultValue={item?.packing_spec ?? ""}
+                    className="h-8 text-xs bg-white"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-neutral-500 italic">
+                * Khi xuất phiếu bán hàng, hệ thống sẽ tự động tính số lượng thùng/kiện và in rõ quy cách đóng gói lên phiếu giao hàng.
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <DialogClose asChild>

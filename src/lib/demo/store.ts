@@ -92,8 +92,8 @@ function seed(): DemoState {
     { id: "nl-004", code: "NL004", name: "Trứng gà", unit: "quả", type: "nguyen_lieu", unit_price: 3_500, min_stock: 50, created_at: daysAgo(120) },
     { id: "nl-005", code: "NL005", name: "Sữa tươi", unit: "lít", type: "nguyen_lieu", unit_price: 30_000, min_stock: 10, created_at: daysAgo(120) },
     { id: "btp-001", code: "BTP001", name: "Cốt bánh bông lan 20cm", unit: "cốt", type: "ban_thanh_pham", unit_price: 45_000, min_stock: 10, created_at: daysAgo(100) },
-    { id: "tp-001", code: "TP001", name: "Bánh mì bơ", unit: "cái", type: "thanh_pham", unit_price: 15_000, min_stock: 20, created_at: daysAgo(120) },
-    { id: "tp-002", code: "TP002", name: "Bánh kem sữa", unit: "cái", type: "thanh_pham", unit_price: 220_000, min_stock: 5, created_at: daysAgo(120) },
+    { id: "tp-001", code: "TP001", name: "Dung môi NC (SV09)", unit: "kg", type: "thanh_pham", unit_price: 32_000, min_stock: 50, packing_spec: "17kg/thùng", pack_size: 17, pack_unit: "thùng", created_at: daysAgo(120) },
+    { id: "tp-002", code: "TP002", name: "Dung môi PU (SV11)", unit: "kg", type: "thanh_pham", unit_price: 35_000, min_stock: 50, packing_spec: "15kg/thùng", pack_size: 15, pack_unit: "thùng", created_at: daysAgo(120) },
   ];
 
   const suppliers: Supplier[] = [
@@ -795,6 +795,9 @@ export function demoCreateItem(input: {
   type: ItemType;
   unitPrice: number;
   minStock: number;
+  packingSpec?: string | null;
+  packSize?: number | null;
+  packUnit?: string | null;
   onHand?: number;
 }): void {
   const state = db();
@@ -811,6 +814,9 @@ export function demoCreateItem(input: {
     type: input.type,
     unit_price: input.unitPrice || 0,
     min_stock: input.minStock || 0,
+    packing_spec: input.packingSpec || (input.packSize ? `${input.packSize}${input.unit.trim()}/${input.packUnit || "thùng"}` : null),
+    pack_size: input.packSize ?? null,
+    pack_unit: input.packUnit ?? null,
     created_at: nowISO(),
   });
   applyStockTarget(state, id, input.onHand ?? 0, input.unitPrice || 0, "Nhập tồn kho đầu kỳ");
@@ -824,6 +830,9 @@ export function demoUpdateItem(input: {
   type: ItemType;
   unitPrice: number;
   minStock: number;
+  packingSpec?: string | null;
+  packSize?: number | null;
+  packUnit?: string | null;
   onHand?: number;
 }): void {
   const state = db();
@@ -843,6 +852,15 @@ export function demoUpdateItem(input: {
   item.type = input.type;
   item.unit_price = input.unitPrice || 0;
   item.min_stock = input.minStock || 0;
+  if (input.packingSpec !== undefined) {
+    item.packing_spec = input.packingSpec || (input.packSize ? `${input.packSize}${input.unit.trim()}/${input.packUnit || "thùng"}` : null);
+  }
+  if (input.packSize !== undefined) {
+    item.pack_size = input.packSize;
+  }
+  if (input.packUnit !== undefined) {
+    item.pack_unit = input.packUnit;
+  }
   if (input.onHand !== undefined) {
     applyStockTarget(state, item.id, input.onHand, item.unit_price, "Điều chỉnh tồn kho");
   }
@@ -1620,6 +1638,9 @@ export function demoSalesOrders(status?: SalesOrderStatus | "all"): SalesOrderRo
             item_name: item?.name ?? "—",
             item_code: item?.code ?? "—",
             item_unit: item?.unit ?? "—",
+            packing_spec: item?.packing_spec ?? null,
+            pack_size: item?.pack_size ?? null,
+            pack_unit: item?.pack_unit ?? null,
           };
         });
 

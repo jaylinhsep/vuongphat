@@ -9,6 +9,7 @@ import {
   Settings2Icon,
 } from "lucide-react";
 import { ItemTypeBadge } from "@/components/status-badges";
+import { ItemFormDialog } from "@/components/forms/master-data-forms";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -225,17 +226,19 @@ export default async function KhoPage({
                   <TableHead>Mã</TableHead>
                   <TableHead className="whitespace-normal">Tên hàng hóa</TableHead>
                   <TableHead>Loại kho</TableHead>
+                  <TableHead>Quy cách đóng gói</TableHead>
                   <TableHead className="text-right">Tồn kho</TableHead>
                   <TableHead className="text-right">Đơn giá</TableHead>
                   <TableHead className="text-right">Giá trị tồn</TableHead>
                   <TableHead>Trạng thái</TableHead>
+                  {canWrite && <TableHead className="w-12 text-center">Sửa</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {displayedInventory.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={canWrite ? 9 : 8}
                       className="py-10 text-center text-sm text-muted-foreground"
                     >
                       Không tìm thấy hàng hóa phù hợp.
@@ -245,6 +248,15 @@ export default async function KhoPage({
                   displayedInventory.map((item) => {
                     const isLow =
                       item.min_stock > 0 && item.on_hand < item.min_stock;
+                    const packQty =
+                      item.pack_size && item.pack_size > 0
+                        ? Math.floor(item.on_hand / item.pack_size)
+                        : null;
+                    const remainder =
+                      item.pack_size && item.pack_size > 0
+                        ? Math.round((item.on_hand % item.pack_size) * 1000) / 1000
+                        : null;
+
                     return (
                       <TableRow key={item.id}>
                         <TableCell className="font-mono text-xs">
@@ -256,19 +268,38 @@ export default async function KhoPage({
                         <TableCell>
                           <ItemTypeBadge type={item.type} />
                         </TableCell>
+                        <TableCell className="text-xs">
+                          {item.packing_spec ? (
+                            <span className="font-medium text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              {item.packing_spec}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground italic">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
-                          <span
-                            className={
-                              isLow
-                                ? "font-semibold text-rose-600"
-                                : "font-semibold"
-                            }
-                          >
-                            {formatQuantity(item.on_hand)}
-                          </span>{" "}
-                          <span className="text-xs text-muted-foreground">
-                            {item.unit}
-                          </span>
+                          <div>
+                            <span
+                              className={
+                                isLow
+                                  ? "font-semibold text-rose-600"
+                                  : "font-semibold"
+                              }
+                            >
+                              {formatQuantity(item.on_hand)}
+                            </span>{" "}
+                            <span className="text-xs text-muted-foreground">
+                              {item.unit}
+                            </span>
+                          </div>
+                          {packQty !== null && item.on_hand > 0 && (
+                            <div className="text-[11px] text-emerald-700 font-medium">
+                              ~ {packQty} {item.pack_unit || "thùng"}
+                              {remainder !== null && remainder > 0
+                                ? ` + ${formatQuantity(remainder)} ${item.unit}`
+                                : ""}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
                           {formatCurrency(item.unit_price)}
@@ -295,6 +326,11 @@ export default async function KhoPage({
                             </Badge>
                           )}
                         </TableCell>
+                        {canWrite && (
+                          <TableCell className="text-center">
+                            <ItemFormDialog item={item} />
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })

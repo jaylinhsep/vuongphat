@@ -22,6 +22,11 @@ exception when duplicate_object then null; end $$;
 -- Thêm giá trị 'ban_thanh_pham' vào item_type enum nếu chưa có
 alter type public.item_type add value if not exists 'ban_thanh_pham';
 
+-- Thêm các cột quy cách đóng gói cho hàng hóa (đặc biệt là thành phẩm)
+alter table public.items add column if not exists packing_spec text;
+alter table public.items add column if not exists pack_size numeric(14, 3);
+alter table public.items add column if not exists pack_unit text;
+
 -- ---------------------------------------------------------------------------
 -- 2. BẢNG KHÁCH HÀNG & ĐƠN BÁN HÀNG
 -- ---------------------------------------------------------------------------

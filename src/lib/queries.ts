@@ -74,6 +74,9 @@ type DbInventory = {
   type: ItemType;
   unit_price: number | string;
   min_stock: number | string;
+  packing_spec?: string | null;
+  pack_size?: number | string | null;
+  pack_unit?: string | null;
   created_at: string;
   on_hand: number | string;
 };
@@ -102,6 +105,9 @@ export async function getInventory(search?: string): Promise<InventoryItem[]> {
     type: row.type,
     unit_price: num(row.unit_price),
     min_stock: num(row.min_stock),
+    packing_spec: row.packing_spec ?? null,
+    pack_size: row.pack_size ? num(row.pack_size) : null,
+    pack_unit: row.pack_unit ?? null,
     created_at: row.created_at,
     on_hand: num(row.on_hand),
   }));
@@ -679,7 +685,14 @@ type DbSalesOrderItem = {
   quantity: number | string;
   unit_price: number | string;
   total_price: number | string;
-  item: { name: string; code: string; unit: string } | null;
+  item: {
+    name: string;
+    code: string;
+    unit: string;
+    packing_spec?: string | null;
+    pack_size?: number | string | null;
+    pack_unit?: string | null;
+  } | null;
 };
 
 type DbSalesOrder = {
@@ -710,7 +723,7 @@ export async function getSalesOrders(
     .select(
       `*,
        customer:customers(name, phone, address),
-       items:sales_order_items(*, item:items(name, code, unit))`,
+       items:sales_order_items(*, item:items(name, code, unit, packing_spec, pack_size, pack_unit))`,
     )
     .order("order_date", { ascending: false })
     .order("created_at", { ascending: false });
@@ -751,6 +764,9 @@ export async function getSalesOrders(
       item_name: i.item?.name ?? "—",
       item_code: i.item?.code ?? "—",
       item_unit: i.item?.unit ?? "—",
+      packing_spec: i.item?.packing_spec ?? null,
+      pack_size: i.item?.pack_size ? num(i.item.pack_size) : null,
+      pack_unit: i.item?.pack_unit ?? null,
     })),
   }));
 }
@@ -764,7 +780,7 @@ export async function getSalesOrder(id: string): Promise<SalesOrderRow | null> {
     .select(
       `*,
        customer:customers(name, phone, address),
-       items:sales_order_items(*, item:items(name, code, unit))`,
+       items:sales_order_items(*, item:items(name, code, unit, packing_spec, pack_size, pack_unit))`,
     )
     .eq("id", id)
     .maybeSingle();
@@ -802,6 +818,9 @@ export async function getSalesOrder(id: string): Promise<SalesOrderRow | null> {
       item_name: i.item?.name ?? "—",
       item_code: i.item?.code ?? "—",
       item_unit: i.item?.unit ?? "—",
+      packing_spec: i.item?.packing_spec ?? null,
+      pack_size: i.item?.pack_size ? num(i.item.pack_size) : null,
+      pack_unit: i.item?.pack_unit ?? null,
     })),
   };
 }

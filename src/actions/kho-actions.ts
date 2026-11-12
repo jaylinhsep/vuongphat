@@ -138,6 +138,14 @@ export async function createItemAction(
     const type = String(formData.get("type") ?? "") as ItemType;
     const unitPrice = parseNumber(formData.get("unit_price"));
     const minStock = parseNumber(formData.get("min_stock"));
+    const rawPackingSpec = String(formData.get("packing_spec") ?? "").trim();
+    const packSize = parseNumber(formData.get("pack_size"));
+    const packUnit = String(formData.get("pack_unit") ?? "").trim() || "thùng";
+    const packingSpec =
+      rawPackingSpec ||
+      (Number.isFinite(packSize) && packSize > 0
+        ? `${packSize}${unit}/${packUnit}`
+        : null);
 
     if (!code || !name || !unit) {
       return { status: "error", message: "Nhập đầy đủ mã, tên và đơn vị tính." };
@@ -156,6 +164,9 @@ export async function createItemAction(
       type,
       unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
       minStock: Number.isFinite(minStock) ? minStock : 0,
+      packingSpec,
+      packSize: Number.isFinite(packSize) && packSize > 0 ? packSize : null,
+      packUnit: Number.isFinite(packSize) && packSize > 0 ? packUnit : null,
       onHand: stock.value,
     };
 
@@ -163,25 +174,40 @@ export async function createItemAction(
       demoCreateItem(payload);
     } else {
       const supabase = await createSupabaseServerClient();
-      const { data, error } = await supabase
+      const dbPayload: Record<string, unknown> = {
+        code: payload.code,
+        name: payload.name,
+        unit: payload.unit,
+        type: payload.type,
+        unit_price: payload.unitPrice,
+        min_stock: payload.minStock,
+        packing_spec: payload.packingSpec,
+        pack_size: payload.packSize,
+        pack_unit: payload.packUnit,
+      };
+
+      let { data, error } = await supabase
         .from("items")
-        .insert({
-          code: payload.code,
-          name: payload.name,
-          unit: payload.unit,
-          type: payload.type,
-          unit_price: payload.unitPrice,
-          min_stock: payload.minStock,
-        })
+        .insert(dbPayload)
         .select("id")
         .single();
+
+      if (error && (error.message.includes("packing_spec") || error.message.includes("column"))) {
+        delete dbPayload.packing_spec;
+        delete dbPayload.pack_size;
+        delete dbPayload.pack_unit;
+        const retry = await supabase.from("items").insert(dbPayload).select("id").single();
+        data = retry.data;
+        error = retry.error;
+      }
+
       if (error) {
         if (error.code === "23505") {
           return { status: "error", message: `Mã hàng "${code}" đã tồn tại.` };
         }
         throw new Error(error.message);
       }
-      if (payload.onHand !== 0) {
+      if (data && payload.onHand !== 0) {
         await setItemStock(
           supabase,
           data.id,
@@ -215,6 +241,14 @@ export async function updateItemAction(
     const type = String(formData.get("type") ?? "") as ItemType;
     const unitPrice = parseNumber(formData.get("unit_price"));
     const minStock = parseNumber(formData.get("min_stock"));
+    const rawPackingSpec = String(formData.get("packing_spec") ?? "").trim();
+    const packSize = parseNumber(formData.get("pack_size"));
+    const packUnit = String(formData.get("pack_unit") ?? "").trim() || "thùng";
+    const packingSpec =
+      rawPackingSpec ||
+      (Number.isFinite(packSize) && packSize > 0
+        ? `${packSize}${unit}/${packUnit}`
+        : null);
 
     if (!id) return { status: "error", message: "Thiếu mã hàng hóa cần sửa." };
     if (!code || !name || !unit) {
@@ -235,6 +269,9 @@ export async function updateItemAction(
       type,
       unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
       minStock: Number.isFinite(minStock) ? minStock : 0,
+      packingSpec,
+      packSize: Number.isFinite(packSize) && packSize > 0 ? packSize : null,
+      packUnit: Number.isFinite(packSize) && packSize > 0 ? packUnit : null,
       onHand: stock.value,
     };
 
@@ -242,17 +279,31 @@ export async function updateItemAction(
       demoUpdateItem(payload);
     } else {
       const supabase = await createSupabaseServerClient();
-      const { error } = await supabase
+      const dbPayload: Record<string, unknown> = {
+        code: payload.code,
+        name: payload.name,
+        unit: payload.unit,
+        type: payload.type,
+        unit_price: payload.unitPrice,
+        min_stock: payload.minStock,
+        packing_spec: payload.packingSpec,
+        pack_size: payload.packSize,
+        pack_unit: payload.packUnit,
+      };
+
+      let { error } = await supabase
         .from("items")
-        .update({
-          code: payload.code,
-          name: payload.name,
-          unit: payload.unit,
-          type: payload.type,
-          unit_price: payload.unitPrice,
-          min_stock: payload.minStock,
-        })
+        .update(dbPayload)
         .eq("id", id);
+
+      if (error && (error.message.includes("packing_spec") || error.message.includes("column"))) {
+        delete dbPayload.packing_spec;
+        delete dbPayload.pack_size;
+        delete dbPayload.pack_unit;
+        const retry = await supabase.from("items").update(dbPayload).eq("id", id);
+        error = retry.error;
+      }
+
       if (error) {
         if (error.code === "23505") {
           return { status: "error", message: `Mã hàng "${code}" đã tồn tại.` };
