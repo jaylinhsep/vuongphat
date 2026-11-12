@@ -13,6 +13,10 @@ import {
 import { errorState, type FormState } from "@/lib/form-state";
 import { parseNumber } from "@/lib/format";
 import { CAN_ACCESS } from "@/lib/labels";
+import {
+  createSupabaseAdminClient,
+  isAdminConfigured,
+} from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isMissingTableError } from "@/lib/supabase/errors";
 import type { ItemType, MovementType } from "@/lib/types";
@@ -385,26 +389,23 @@ export async function deleteItemAction(
     if (!isSupabaseConfigured()) {
       demoDeleteItem(id);
     } else {
-      const supabase = await createSupabaseServerClient();
-      const { error } = await supabase.from("items").delete().eq("id", id);
+      // Dùng admin client (service_role) nếu có để bypass RLS, dọn sạch dữ liệu phụ thuộc
+      const dbClient = isAdminConfigured()
+        ? createSupabaseAdminClient()
+        : await createSupabaseServerClient();
+
+      // Dọn dẹp dữ liệu ở các bảng liên quan có khóa ngoại trỏ tới items
+      await dbClient.from("bom_items").delete().eq("material_id", id);
+      await dbClient.from("boms").delete().eq("product_id", id);
+      await dbClient.from("sales_order_items").delete().eq("item_id", id);
+      await dbClient.from("purchase_order_items").delete().eq("item_id", id);
+      await dbClient.from("production_orders").delete().eq("product_id", id);
+      await dbClient.from("stock_movements").delete().eq("item_id", id);
+
+      const { error } = await dbClient.from("items").delete().eq("id", id);
       if (error) {
         if (isMissingTableError(error)) {
           demoDeleteItem(id);
-        } else if (
-          error.message.includes("foreign key") ||
-          error.code === "23503" ||
-          error.message.includes("violates foreign key constraint")
-        ) {
-          // Người dùng đã gõ "ok" xác nhận xóa, dọn dẹp các ràng buộc liên quan để xóa sạch mặt hàng
-          await supabase.from("bom_items").delete().eq("material_id", id);
-          await supabase.from("boms").delete().eq("product_id", id);
-          await supabase.from("sales_order_items").delete().eq("item_id", id);
-          await supabase.from("purchase_order_items").delete().eq("item_id", id);
-          await supabase.from("production_orders").delete().eq("product_id", id);
-          await supabase.from("stock_movements").delete().eq("item_id", id);
-
-          const retry = await supabase.from("items").delete().eq("id", id);
-          if (retry.error) throw new Error(retry.error.message);
         } else {
           throw new Error(error.message);
         }
