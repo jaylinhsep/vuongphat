@@ -98,7 +98,7 @@ export function PrintSalesDeliveryDocument({
         {/* Tiêu đề */}
         <div className="flex items-start justify-between gap-4 border-b-2 border-black pb-3">
           <div>
-            <p className="text-lg font-bold uppercase tracking-wider">CÔNG TY TNHH VƯƠNG PHÁT</p>
+            <p className="text-lg font-bold uppercase tracking-wider">CÔNG TY TNHH VƯỢNG PHÁT INK</p>
             <p className="text-xs text-neutral-600">
               Hệ thống Quản lý Bán hàng &amp; Kho vận — Hóa chất &amp; Dung môi
             </p>

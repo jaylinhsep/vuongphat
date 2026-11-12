@@ -29,7 +29,7 @@ export async function GET() {
   const totalCustDebt = customerDebts.reduce((s, c) => s + c.debt_amount, 0);
 
   const custBody: (string | number)[][] = [
-    ["BÁO CÁO CÔNG NỢ PHẢI THU (KHÁCH HÀNG) — VƯƠNG PHÁT ERP"],
+    ["BÁO CÁO CÔNG NỢ PHẢI THU (KHÁCH HÀNG) — VƯỢNG PHÁT INK"],
     [`Ngày xuất báo cáo: ${stamp}`],
     [],
     [
@@ -79,7 +79,7 @@ export async function GET() {
   const totalSuppDebt = supplierDebts.reduce((s, c) => s + c.debt_amount, 0);
 
   const suppBody: (string | number)[][] = [
-    ["BÁO CÁO CÔNG NỢ PHẢI TRẢ (NHÀ CUNG CẤP) — VƯƠNG PHÁT ERP"],
+    ["BÁO CÁO CÔNG NỢ PHẢI TRẢ (NHÀ CUNG CẤP) — VƯỢNG PHÁT INK"],
     [`Ngày xuất báo cáo: ${stamp}`],
     [],
     [

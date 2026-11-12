@@ -33,7 +33,7 @@ export default async function LoginPage() {
             VP
           </span>
           <div>
-            <p className="text-sm font-semibold">Vương Phát ERP</p>
+            <p className="text-sm font-semibold">VƯỢNG PHÁT INK</p>
             <p className="text-xs text-primary-foreground/70">
               Hệ thống quản trị nội bộ
             </p>
@@ -62,7 +62,7 @@ export default async function LoginPage() {
         </div>
 
         <p className="relative text-xs text-primary-foreground/60">
-          © {new Date().getFullYear()} Vương Phát. Bản quyền nội bộ.
+          © {new Date().getFullYear()} VƯỢNG PHÁT INK. Bản quyền nội bộ.
         </p>
       </div>
 

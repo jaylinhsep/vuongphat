@@ -76,7 +76,7 @@ function SidebarBody({
           VP
         </span>
         <span className="leading-tight">
-          <span className="block text-sm font-semibold">Vương Phát ERP</span>
+          <span className="block text-sm font-semibold">VƯỢNG PHÁT INK</span>
           <span className="block text-[11px] text-muted-foreground">
             Kho · Sản xuất · Kế toán
           </span>
@@ -224,7 +224,7 @@ export function AppShell({
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">
-              {current?.label ?? "Vương Phát ERP"}
+              {current?.label ?? "VƯỢNG PHÁT INK"}
             </p>
           </div>
 

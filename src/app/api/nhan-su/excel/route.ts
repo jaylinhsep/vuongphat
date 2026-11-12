@@ -29,7 +29,7 @@ export async function GET(request: Request) {
   const totalNet = payroll.reduce((sum, r) => sum + r.net_salary, 0);
 
   const body: (string | number)[][] = [
-    ["BẢNG LƯƠNG NHÂN VIÊN — VƯƠNG PHÁT ERP"],
+    ["BẢNG LƯƠNG NHÂN VIÊN — VƯỢNG PHÁT INK"],
     [`Kỳ tính lương: ${periodLabel(period)} (${period})`],
     [],
     [

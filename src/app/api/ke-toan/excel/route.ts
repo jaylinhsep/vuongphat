@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     .reduce((total, row) => total + row.amount, 0);
 
   const body: (string | number)[][] = [
-    ["SỔ QUỸ THU CHI — VƯƠNG PHÁT"],
+    ["SỔ QUỸ THU CHI — VƯỢNG PHÁT INK"],
     [
       `Kỳ báo cáo: ${from ? formatDate(from) : "từ đầu"} — ${
         to ? formatDate(to) : "hiện tại"

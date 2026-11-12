@@ -391,7 +391,7 @@ function seed(): DemoState {
       id: "task-002",
       employee_id: "nv-002",
       title: "Kiểm đếm tồn kho bột mì và bơ lạt",
-      description: "Đối chiếu số lượng thực tế với số liệu trên phần mềm Vương Phát ERP.",
+      description: "Đối chiếu số lượng thực tế với số liệu trên phần mềm Vượng Phát INK.",
       due_date: todayISO(),
       status: "hoan_thanh",
       completed_at: nowISO(),

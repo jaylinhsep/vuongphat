@@ -10,9 +10,9 @@ const beVietnam = Be_Vietnam_Pro({
 });
 
 export const metadata: Metadata = {
-  title: "Vương Phát ERP — Kho · Sản xuất · Kế toán",
+  title: "Vượng Phát INK — Kho · Sản xuất · Kế toán",
   description:
-    "Hệ thống quản trị nội bộ: quản lý kho, lệnh sản xuất theo định lượng BOM và sổ quỹ thu chi.",
+    "Hệ thống quản trị nội bộ Vượng Phát INK: quản lý kho, lệnh sản xuất theo định lượng BOM và sổ quỹ thu chi.",
 };
 
 export default function RootLayout({

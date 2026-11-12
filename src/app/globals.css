@@ -145,7 +145,8 @@ body {
   font-weight: 700;
   font-size: 1.1rem;
 }
-.print-table td.print-qty {
+.print-table td.print-qty,
+.print-table td.print-code {
   font-size: 2.2rem;
   font-weight: 900;
   color: #000;

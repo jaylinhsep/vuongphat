@@ -39,7 +39,7 @@ export async function GET(request: Request) {
   const stamp = new Date().toISOString().slice(0, 10);
 
   const body: (string | number)[][] = [
-    ["BÁO CÁO ĐƠN HÀNG MUA — VƯƠNG PHÁT ERP"],
+    ["BÁO CÁO ĐƠN HÀNG MUA — VƯỢNG PHÁT INK"],
     [`Ngày xuất báo cáo: ${stamp}`],
     [],
     [
