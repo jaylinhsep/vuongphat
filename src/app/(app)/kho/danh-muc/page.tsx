@@ -6,6 +6,7 @@ import {
 } from "@/components/forms/master-data-forms";
 import { PageHeader } from "@/components/page-header";
 import { ItemTypeBadge } from "@/components/status-badges";
+import { PackingSpecBadges } from "@/components/packing-spec-badges";
 import {
   Card,
   CardContent,
@@ -104,13 +105,12 @@ export default async function DanhMucPage() {
                         {item.unit}
                       </TableCell>
                       <TableCell className="text-xs">
-                        {item.packing_spec ? (
-                          <span className="font-medium text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                            {item.packing_spec}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground italic">—</span>
-                        )}
+                        <PackingSpecBadges
+                          packingSpec={item.packing_spec}
+                          packSize={item.pack_size}
+                          packUnit={item.pack_unit}
+                          unit={item.unit}
+                        />
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
                         {formatCurrency(item.unit_price)}

@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { initialFormState } from "@/lib/form-state";
+import { formatPackingSpecSummary } from "@/lib/packing-specs";
 import type { InventoryItem } from "@/lib/types";
 
 export function DeleteItemDialog({ item }: { item: InventoryItem }) {
@@ -85,7 +86,7 @@ export function DeleteItemDialog({ item }: { item: InventoryItem }) {
             </div>
             {item.packing_spec && (
               <div className="text-neutral-600">
-                Quy cách: {item.packing_spec}
+                Quy cách: {formatPackingSpecSummary(item.packing_spec, item.pack_size, item.pack_unit, item.unit)}
               </div>
             )}
           </div>

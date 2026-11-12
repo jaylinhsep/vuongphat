@@ -196,3 +196,19 @@ export function formatPackingSpecsForSave(
     pack_unit: primaryPackUnit,
   };
 }
+
+/**
+ * Trả về chuỗi tóm tắt các quy cách đóng gói (VD: "170KG/phuy, 25KG/can")
+ * Thay vì chuỗi JSON thô như "[{...}]"
+ */
+export function formatPackingSpecSummary(
+  rawSpec?: string | null,
+  defaultPackSize?: number | null,
+  defaultPackUnit?: string | null,
+  itemUnit: string = "kg",
+): string {
+  const specs = parsePackingSpecs(rawSpec, defaultPackSize, defaultPackUnit, itemUnit);
+  if (specs.length === 0) return "";
+  return specs.map((s) => s.spec).join(", ");
+}
+

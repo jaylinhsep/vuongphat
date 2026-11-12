@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { requireRole } from "@/lib/auth";
 import { formatDate, formatNumber } from "@/lib/format";
+import { formatPackingSpecSummary } from "@/lib/packing-specs";
 import { CAN_ACCESS } from "@/lib/labels";
 import { getSalesOrders } from "@/lib/queries";
 import type { SalesOrderStatus } from "@/lib/types";
@@ -189,8 +190,12 @@ export default async function SanXuatDonHangPage({
                                 <div className="text-[11px] text-emerald-800 flex justify-between font-medium pt-0.5">
                                   <span>
                                     Quy cách:{" "}
-                                    {item.packing_spec ||
-                                      `${item.pack_size}${item.item_unit}/${item.pack_unit || "thùng"}`}
+                                    {formatPackingSpecSummary(
+                                      item.packing_spec,
+                                      item.pack_size,
+                                      item.pack_unit,
+                                      item.item_unit,
+                                    ) || `${item.pack_size}${item.item_unit}/${item.pack_unit || "thùng"}`}
                                   </span>
                                   {numPacks !== null && (
                                     <span className="font-bold">
@@ -289,7 +294,14 @@ export default async function SanXuatDonHangPage({
                                 {(item.packing_spec || numPacks !== null) && (
                                   <span className="text-[11px] text-emerald-800 ml-1.5 font-medium bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
                                     {numPacks !== null ? `~ ${numPacks} ${item.pack_unit || "thùng"}` : ""}
-                                    {item.packing_spec ? ` (${item.packing_spec})` : ""}
+                                    {item.packing_spec
+                                      ? ` (${formatPackingSpecSummary(
+                                          item.packing_spec,
+                                          item.pack_size,
+                                          item.pack_unit,
+                                          item.item_unit,
+                                        )})`
+                                      : ""}
                                   </span>
                                 )}
                               </div>

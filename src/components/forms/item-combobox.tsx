@@ -9,6 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { formatPackingSpecSummary } from "@/lib/packing-specs";
 import type { Item } from "@/lib/types";
 
 function removeVietnameseTones(str: string): string {
@@ -101,7 +102,14 @@ export function ItemCombobox({
             <span className="truncate">
               {selectedItem
                 ? `${selectedItem.name} (${selectedItem.code})${
-                    selectedItem.packing_spec ? ` — ${selectedItem.packing_spec}` : ""
+                    selectedItem.packing_spec
+                      ? ` — ${formatPackingSpecSummary(
+                          selectedItem.packing_spec,
+                          selectedItem.pack_size,
+                          selectedItem.pack_unit,
+                          selectedItem.unit,
+                        )}`
+                      : ""
                   }`
                 : placeholder}
             </span>
@@ -185,7 +193,7 @@ export function ItemCombobox({
                       )}
                       {item.packing_spec && (
                         <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                          {item.packing_spec}
+                          {formatPackingSpecSummary(item.packing_spec, item.pack_size, item.pack_unit, item.unit)}
                         </span>
                       )}
                     </div>
