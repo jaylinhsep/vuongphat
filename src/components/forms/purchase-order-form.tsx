@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { PlusIcon, Trash2Icon, TruckIcon } from "lucide-react";
 import { createPurchaseOrderAction } from "@/actions/mua-hang-actions";
+import { ItemCombobox } from "@/components/forms/item-combobox";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -206,29 +207,12 @@ export function CreatePurchaseOrderDialog({
                         {idx + 1}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <Select
+                        <ItemCombobox
+                          items={items}
                           value={line.itemId}
-                          onValueChange={(val) => updateItem(line.id, val)}
-                        >
-                          <SelectTrigger className="h-8 text-xs w-full">
-                            <SelectValue placeholder="Chọn hàng mua..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {items.map((item) => {
-                              const typeBadge =
-                                item.type === "nguyen_lieu"
-                                  ? "[NL] "
-                                  : item.type === "ban_thanh_pham"
-                                    ? "[BTP] "
-                                    : "[TP] ";
-                              return (
-                                <SelectItem key={item.id} value={item.id} className="text-xs">
-                                  {typeBadge}{item.name} ({item.code}) — Tồn: {item.on_hand} {item.unit}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
+                          onChange={(val) => updateItem(line.id, val)}
+                          placeholder="Gõ tìm hoặc chọn mặt hàng..."
+                        />
                       </div>
                       {lines.length > 1 && (
                         <Button
@@ -315,29 +299,12 @@ export function CreatePurchaseOrderDialog({
                       </span>
 
                       <div className="flex-1">
-                        <Select
+                        <ItemCombobox
+                          items={items}
                           value={line.itemId}
-                          onValueChange={(val) => updateItem(line.id, val)}
-                        >
-                          <SelectTrigger className="h-8 text-xs w-full">
-                            <SelectValue placeholder="Chọn hàng mua..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {items.map((item) => {
-                              const typeBadge =
-                                item.type === "nguyen_lieu"
-                                  ? "[NL] "
-                                  : item.type === "ban_thanh_pham"
-                                    ? "[BTP] "
-                                    : "[TP] ";
-                              return (
-                                <SelectItem key={item.id} value={item.id}>
-                                  {typeBadge}{item.name} ({item.code}) — Tồn: {item.on_hand} {item.unit}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
+                          onChange={(val) => updateItem(line.id, val)}
+                          placeholder="Gõ tìm hoặc chọn mặt hàng..."
+                        />
                       </div>
 
                       <div className="w-24">

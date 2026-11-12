@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { PlusIcon, Trash2Icon, PencilIcon } from "lucide-react";
 import { updateSalesOrderAction } from "@/actions/ban-hang-actions";
+import { ItemCombobox } from "@/components/forms/item-combobox";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -265,29 +266,12 @@ export function EditSalesOrderDialog({
                         {idx + 1}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <Select
+                        <ItemCombobox
+                          items={items}
                           value={line.itemId}
-                          onValueChange={(val) => updateItem(line.id, val)}
-                        >
-                          <SelectTrigger className="h-8 text-xs w-full">
-                            <SelectValue placeholder="Chọn mặt hàng bán..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {items.map((item) => {
-                              const typeBadge =
-                                item.type === "thanh_pham"
-                                  ? "[TP] "
-                                  : item.type === "ban_thanh_pham"
-                                    ? "[BTP] "
-                                    : "[NL] ";
-                              return (
-                                <SelectItem key={item.id} value={item.id} className="text-xs">
-                                  {typeBadge}{item.name} ({item.code}) — Tồn: {item.on_hand} {item.unit}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
+                          onChange={(val) => updateItem(line.id, val)}
+                          placeholder="Gõ tìm hoặc chọn mặt hàng..."
+                        />
                       </div>
                       {lines.length > 1 && (
                         <Button
@@ -374,29 +358,12 @@ export function EditSalesOrderDialog({
                       </span>
 
                       <div className="flex-1">
-                        <Select
+                        <ItemCombobox
+                          items={items}
                           value={line.itemId}
-                          onValueChange={(val) => updateItem(line.id, val)}
-                        >
-                          <SelectTrigger className="h-8 text-xs w-full">
-                            <SelectValue placeholder="Chọn mặt hàng bán..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {items.map((item) => {
-                              const typeBadge =
-                                item.type === "thanh_pham"
-                                  ? "[TP] "
-                                  : item.type === "ban_thanh_pham"
-                                    ? "[BTP] "
-                                    : "[NL] ";
-                              return (
-                                <SelectItem key={item.id} value={item.id}>
-                                  {typeBadge}{item.name} ({item.code}) — Tồn: {item.on_hand} {item.unit}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
+                          onChange={(val) => updateItem(line.id, val)}
+                          placeholder="Gõ tìm hoặc chọn mặt hàng..."
+                        />
                       </div>
 
                       <div className="w-24">
