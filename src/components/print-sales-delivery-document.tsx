@@ -225,7 +225,7 @@ export function PrintSalesDeliveryDocument({
               CÔNG TY TNHH VƯỢNG PHÁT INK
             </p>
             <p className="text-xs text-neutral-700">
-              Hệ thống Quản lý Bán hàng &amp; Kho vận — Hóa chất &amp; Dung môi
+              60 Nguyễn Thông, Phường Nhiêu Lộc, TP Hồ Chí Minh
             </p>
           </div>
           <div className="text-right">
