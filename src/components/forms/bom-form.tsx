@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { saveBomAction } from "@/actions/san-xuat-actions";
+import { ItemCombobox } from "@/components/forms/item-combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,6 +61,11 @@ export function BomForm({
   const availableMaterials = useMemo(
     () => materials.filter((m) => m.id !== productId),
     [materials, productId],
+  );
+
+  const comboboxMaterials = useMemo(
+    () => availableMaterials.map((m) => ({ ...m, on_hand: 0 })),
+    [availableMaterials],
   );
 
   const batchCost = lines.reduce((total, line) => {
@@ -177,24 +183,16 @@ export function BomForm({
                 key={index}
                 className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_150px_120px_36px] sm:items-center"
               >
-                <Select
-                  value={line.materialId}
-                  onValueChange={(value) =>
-                    updateLine(index, { materialId: value })
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Chọn nguyên liệu hoặc bán thành phẩm" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableMaterials.map((entry) => (
-                      <SelectItem key={entry.id} value={entry.id}>
-                        {entry.type === "ban_thanh_pham" ? "[BTP] " : "[NL] "}
-                        {entry.code} — {entry.name} ({entry.unit})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="min-w-0">
+                  <ItemCombobox
+                    items={comboboxMaterials}
+                    value={line.materialId}
+                    onChange={(value) =>
+                      updateLine(index, { materialId: value })
+                    }
+                    placeholder="Gõ tìm nguyên liệu hoặc BTP..."
+                  />
+                </div>
 
                 <div className="flex items-center gap-2">
                   <Input

@@ -6,12 +6,14 @@ import { isSupabaseConfigured } from "@/lib/config";
 import {
   demoConfirmOrder,
   demoCreateOrder,
+  demoDeleteBom,
   demoSaveBom,
 } from "@/lib/demo/store";
 import { errorState, type FormState } from "@/lib/form-state";
 import { parseNumber, todayISO } from "@/lib/format";
 import { CAN_ACCESS } from "@/lib/labels";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isMissingTableError } from "@/lib/supabase/errors";
 
 async function requireProductionWrite() {
   const user = await getCurrentUser();
@@ -95,6 +97,37 @@ export async function saveBomAction(
 
     refreshSanXuat();
     return { status: "success", message: "Đã lưu công thức định lượng." };
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function deleteBomAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await requireBomWrite();
+
+    const bomId = String(formData.get("bom_id") ?? "");
+    if (!bomId) return { status: "error", message: "Thiếu mã công thức cần xóa." };
+
+    if (!isSupabaseConfigured()) {
+      demoDeleteBom(bomId);
+    } else {
+      const supabase = await createSupabaseServerClient();
+      const { error } = await supabase.from("boms").delete().eq("id", bomId);
+      if (error) {
+        if (isMissingTableError(error)) {
+          demoDeleteBom(bomId);
+        } else {
+          throw new Error(error.message);
+        }
+      }
+    }
+
+    refreshSanXuat();
+    return { status: "success", message: "Đã xóa công thức thành công." };
   } catch (error) {
     return errorState(error);
   }

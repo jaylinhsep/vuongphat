@@ -980,6 +980,11 @@ export function demoSaveBom(input: {
   }
 }
 
+export function demoDeleteBom(id: string): void {
+  const state = db();
+  state.boms = state.boms.filter((bom) => bom.id !== id && bom.product_id !== id);
+}
+
 export function demoOrders(): ProductionRow[] {
   const state = db();
   return state.orders

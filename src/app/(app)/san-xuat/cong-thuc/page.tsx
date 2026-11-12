@@ -1,5 +1,7 @@
 import { FlaskConicalIcon, LayersIcon, PencilLineIcon } from "lucide-react";
 import { BomForm } from "@/components/forms/bom-form";
+import { DeleteBomDialog } from "@/components/forms/delete-bom-dialog";
+import { EditBomDialog } from "@/components/forms/edit-bom-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -96,9 +98,13 @@ export default async function CongThucPage() {
                           {bom.product_unit}
                         </CardDescription>
                       </div>
-                      <Badge variant="secondary" className="shrink-0">
-                        <LayersIcon /> {bom.items.length} nguyên liệu
-                      </Badge>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Badge variant="secondary" className="hidden sm:inline-flex">
+                          <LayersIcon /> {bom.items.length} nguyên liệu
+                        </Badge>
+                        <EditBomDialog bom={bom} materials={materials} />
+                        <DeleteBomDialog bom={bom} />
+                      </div>
                     </div>
                     {bom.note && (
                       <p className="text-xs text-muted-foreground">{bom.note}</p>
