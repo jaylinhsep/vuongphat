@@ -302,44 +302,20 @@ export function PrintSalesDeliveryDocument({
                     {idx + 1}
                   </td>
 
-                  {/* MÃ HÀNG / TÊN THƯƠNG MẠI */}
+                  {/* TÊN THƯƠNG MẠI / MẶT HÀNG */}
                   <td className="text-center">
                     {isEditing ? (
-                      <div className="space-y-1">
-                        <input
-                          type="text"
-                          value={line.commercialName ?? ""}
-                          onChange={(e) => updateLine(idx, "commercialName", e.target.value)}
-                          placeholder="Tên thương mại cho khách..."
-                          className="w-full text-center font-bold text-sm uppercase rounded border px-1.5 py-0.5 bg-white text-black"
-                          title="Tên thương mại hiển thị cho khách hàng"
-                        />
-                        <input
-                          type="text"
-                          value={line.itemCode}
-                          onChange={(e) => updateLine(idx, "itemCode", e.target.value)}
-                          placeholder="Mã nội bộ..."
-                          className="w-full text-center font-mono text-xs text-neutral-600 rounded border px-1.5 py-0.5 bg-neutral-50"
-                          title="Mã hàng nội bộ"
-                        />
-                      </div>
+                      <input
+                        type="text"
+                        value={line.commercialName || line.itemCode}
+                        onChange={(e) => updateLine(idx, "commercialName", e.target.value)}
+                        placeholder="Tên thương mại..."
+                        className="w-full text-center font-bold text-sm uppercase rounded border px-1.5 py-0.5 bg-white text-black"
+                      />
                     ) : (
-                      <>
-                        <span className="font-bold text-sm sm:text-base tracking-wide block uppercase text-black leading-tight">
-                          {line.commercialName || line.itemCode}
-                        </span>
-                        {/* Dòng phụ nhỏ mã nội bộ nếu có tên thương mại */}
-                        {line.commercialName && line.commercialName !== line.itemCode && (
-                          <span className="text-[11px] font-mono text-neutral-600 block mt-0.5 font-normal">
-                            (Mã: {line.itemCode})
-                          </span>
-                        )}
-                        {!line.commercialName && line.itemName && line.itemName !== line.itemCode && (
-                          <span className="text-[11px] text-neutral-600 block mt-0.5 font-normal leading-tight">
-                            {line.itemName}
-                          </span>
-                        )}
-                      </>
+                      <span className="font-bold text-sm sm:text-base tracking-wide block uppercase text-black leading-tight">
+                        {line.commercialName || line.itemCode}
+                      </span>
                     )}
                   </td>
 
