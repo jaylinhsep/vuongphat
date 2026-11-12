@@ -11,6 +11,7 @@ import {
   demoDeleteCustomer,
   demoPaySalesOrder,
   demoUpdateCustomer,
+  demoUpdateSalesOrder,
 } from "@/lib/demo/store";
 import { errorState, type FormState } from "@/lib/form-state";
 import { parseNumber, todayISO } from "@/lib/format";
@@ -249,6 +250,110 @@ export async function createSalesOrderAction(
 
     refreshBanHang();
     return { status: "success", message: "Đã tạo đơn bán hàng thành công." };
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function updateSalesOrderAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) throw new Error("Phiên đăng nhập đã hết hạn.");
+    if (user.role !== "admin") {
+      throw new Error("Chỉ Quản trị viên (Admin) mới có quyền chỉnh sửa đơn bán hàng.");
+    }
+
+    const id = String(formData.get("id") ?? "");
+    const customerId = String(formData.get("customer_id") ?? "");
+    const orderDate = String(formData.get("order_date") ?? "") || todayISO();
+    const deliveryDate = String(formData.get("delivery_date") ?? "") || null;
+    const note = String(formData.get("note") ?? "").trim();
+
+    let items: { itemId: string; quantity: number; unitPrice: number }[] = [];
+    try {
+      const raw = JSON.parse(String(formData.get("items") ?? "[]")) as unknown;
+      if (Array.isArray(raw)) {
+        items = raw
+          .map((line) => {
+            const entry = line as { itemId?: unknown; quantity?: unknown; unitPrice?: unknown };
+            return {
+              itemId: String(entry.itemId ?? ""),
+              quantity: Number(entry.quantity),
+              unitPrice: Number(entry.unitPrice),
+            };
+          })
+          .filter(
+            (line) =>
+              line.itemId &&
+              Number.isFinite(line.quantity) &&
+              line.quantity > 0 &&
+              Number.isFinite(line.unitPrice) &&
+              line.unitPrice >= 0,
+          );
+      }
+    } catch {
+      return { status: "error", message: "Dữ liệu mặt hàng không hợp lệ." };
+    }
+
+    if (!id) return { status: "error", message: "Thiếu mã đơn hàng." };
+    if (!customerId) return { status: "error", message: "Vui lòng chọn khách hàng." };
+    if (!items.length) {
+      return { status: "error", message: "Đơn hàng phải có ít nhất một mặt hàng." };
+    }
+
+    const totalAmount = items.reduce(
+      (sum, line) => sum + line.quantity * line.unitPrice,
+      0,
+    );
+
+    if (!isSupabaseConfigured()) {
+      demoUpdateSalesOrder({
+        id,
+        customerId,
+        orderDate,
+        deliveryDate,
+        note,
+        items,
+      });
+    } else {
+      const supabase = await createSupabaseServerClient();
+
+      const { error: orderError } = await supabase
+        .from("sales_orders")
+        .update({
+          customer_id: customerId,
+          order_date: orderDate,
+          delivery_date: deliveryDate,
+          total_amount: totalAmount,
+          note: note || null,
+        })
+        .eq("id", id);
+
+      if (orderError) throw new Error(orderError.message);
+
+      // Xóa items cũ và chèn items mới
+      await supabase.from("sales_order_items").delete().eq("order_id", id);
+
+      const itemsPayload = items.map((line) => ({
+        order_id: id,
+        item_id: line.itemId,
+        quantity: line.quantity,
+        unit_price: line.unitPrice,
+        total_price: line.quantity * line.unitPrice,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("sales_order_items")
+        .insert(itemsPayload);
+
+      if (itemsError) throw new Error(itemsError.message);
+    }
+
+    refreshBanHang();
+    return { status: "success", message: "Đã cập nhật đơn bán hàng thành công." };
   } catch (error) {
     return errorState(error);
   }

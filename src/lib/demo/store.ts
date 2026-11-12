@@ -1627,6 +1627,7 @@ export function demoSalesOrders(status?: SalesOrderStatus | "all"): SalesOrderRo
         ...order,
         customer_name: cust?.name ?? "—",
         customer_phone: cust?.phone ?? null,
+        customer_address: cust?.address ?? null,
         items,
       };
     });
@@ -1690,6 +1691,50 @@ export function demoCreateSalesOrder(input: {
   }
 
   return order;
+}
+
+export function demoUpdateSalesOrder(input: {
+  id: string;
+  customerId: string;
+  orderDate?: string;
+  deliveryDate?: string | null;
+  note?: string | null;
+  items: { itemId: string; quantity: number; unitPrice: number }[];
+}): void {
+  const state = db();
+  const order = state.salesOrders.find((o) => o.id === input.id);
+  if (!order) throw new Error("Không tìm thấy đơn bán hàng.");
+  if (order.status !== "cho_xac_nhan") {
+    throw new Error("Chỉ có thể sửa đơn hàng đang ở trạng thái chờ xuất kho.");
+  }
+  const cust = state.customers.find((c) => c.id === input.customerId);
+  if (!cust) throw new Error("Khách hàng không tồn tại.");
+  if (!input.items || input.items.length === 0) {
+    throw new Error("Đơn hàng phải có ít nhất một mặt hàng.");
+  }
+
+  const totalAmount = input.items.reduce(
+    (sum, line) => sum + line.quantity * line.unitPrice,
+    0,
+  );
+
+  order.customer_id = input.customerId;
+  if (input.orderDate) order.order_date = input.orderDate;
+  order.delivery_date = input.deliveryDate || null;
+  order.note = input.note || null;
+  order.total_amount = totalAmount;
+
+  state.salesOrderItems = state.salesOrderItems.filter((soi) => soi.order_id !== input.id);
+  for (const line of input.items) {
+    state.salesOrderItems.push({
+      id: uid(),
+      order_id: input.id,
+      item_id: line.itemId,
+      quantity: line.quantity,
+      unit_price: line.unitPrice,
+      total_price: line.quantity * line.unitPrice,
+    });
+  }
 }
 
 export function demoConfirmSalesOrder(orderId: string): void {

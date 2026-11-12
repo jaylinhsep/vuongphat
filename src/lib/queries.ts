@@ -710,7 +710,7 @@ type DbSalesOrder = {
   note: string | null;
   created_by: string | null;
   created_at: string;
-  customer: { name: string; phone: string | null } | null;
+  customer: { name: string; phone: string | null; address?: string | null } | null;
   items: DbSalesOrderItem[];
 };
 
@@ -724,7 +724,7 @@ export async function getSalesOrders(
     .from("sales_orders")
     .select(
       `*,
-       customer:customers(name, phone),
+       customer:customers(name, phone, address),
        items:sales_order_items(*, item:items(name, code, unit))`,
     )
     .order("order_date", { ascending: false })
@@ -755,6 +755,7 @@ export async function getSalesOrders(
     created_at: order.created_at,
     customer_name: order.customer?.name ?? "—",
     customer_phone: order.customer?.phone ?? null,
+    customer_address: order.customer?.address ?? null,
     items: (order.items ?? []).map((i) => ({
       id: i.id,
       order_id: i.order_id,
@@ -777,7 +778,7 @@ export async function getSalesOrder(id: string): Promise<SalesOrderRow | null> {
     .from("sales_orders")
     .select(
       `*,
-       customer:customers(name, phone),
+       customer:customers(name, phone, address),
        items:sales_order_items(*, item:items(name, code, unit))`,
     )
     .eq("id", id)
@@ -805,6 +806,7 @@ export async function getSalesOrder(id: string): Promise<SalesOrderRow | null> {
     created_at: order.created_at,
     customer_name: order.customer?.name ?? "—",
     customer_phone: order.customer?.phone ?? null,
+    customer_address: order.customer?.address ?? null,
     items: (order.items ?? []).map((i) => ({
       id: i.id,
       order_id: i.order_id,

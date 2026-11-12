@@ -314,6 +314,7 @@ export type SalesOrder = {
 export type SalesOrderRow = SalesOrder & {
   customer_name: string;
   customer_phone: string | null;
+  customer_address?: string | null;
   items: SalesOrderItemRow[];
 };
 

@@ -203,7 +203,7 @@ export function AppShell({
         <SidebarBody user={user} />
       </aside>
 
-      <div className="lg:pl-64">
+      <div className="min-w-0 max-w-full overflow-x-hidden lg:pl-64">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur lg:px-6">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
@@ -256,7 +256,7 @@ export function AppShell({
           </div>
         )}
 
-        <main className="mx-auto w-full max-w-7xl p-4 lg:p-6">{children}</main>
+        <main className="mx-auto w-full max-w-7xl min-w-0 p-3 sm:p-4 lg:p-6 overflow-hidden">{children}</main>
       </div>
     </div>
   );
