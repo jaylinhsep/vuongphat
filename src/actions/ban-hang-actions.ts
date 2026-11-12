@@ -17,6 +17,7 @@ import { errorState, type FormState } from "@/lib/form-state";
 import { parseNumber, todayISO } from "@/lib/format";
 import { CAN_ACCESS } from "@/lib/labels";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 import { isMissingTableError } from "@/lib/supabase/errors";
 import type { PaymentMethod } from "@/lib/types";
 
@@ -66,7 +67,9 @@ export async function createCustomerAction(
     if (!isSupabaseConfigured()) {
       demoCreateCustomer({ code, name, phone, address, note });
     } else {
-      const supabase = await createSupabaseServerClient();
+      const supabase = isAdminConfigured()
+        ? createSupabaseAdminClient()
+        : await createSupabaseServerClient();
       const payload: Record<string, unknown> = {
         name,
         phone: phone || null,
@@ -78,9 +81,10 @@ export async function createCustomerAction(
       const { error } = await supabase.from("customers").insert(payload);
       if (error) {
         if (isMissingTableError(error)) {
-          demoCreateCustomer({ code, name, phone, address, note });
-          refreshBanHang();
-          return { status: "success", message: `Đã thêm khách hàng "${name}".` };
+          return {
+            status: "error",
+            message: "Bảng dữ liệu 'customers' chưa được tạo trên Supabase. Vui lòng chạy lệnh SQL trong Supabase SQL Editor để lưu dữ liệu vĩnh viễn.",
+          };
         }
         if (error.message.includes("unique")) {
           return { status: "error", message: `Mã khách hàng "${code}" đã tồn tại.` };
@@ -115,7 +119,9 @@ export async function updateCustomerAction(
     if (!isSupabaseConfigured()) {
       demoUpdateCustomer(id, { name, phone, address, note });
     } else {
-      const supabase = await createSupabaseServerClient();
+      const supabase = isAdminConfigured()
+        ? createSupabaseAdminClient()
+        : await createSupabaseServerClient();
       const { error } = await supabase
         .from("customers")
         .update({
@@ -127,9 +133,10 @@ export async function updateCustomerAction(
         .eq("id", id);
       if (error) {
         if (isMissingTableError(error)) {
-          demoUpdateCustomer(id, { name, phone, address, note });
-          refreshBanHang();
-          return { status: "success", message: `Đã cập nhật khách hàng "${name}".` };
+          return {
+            status: "error",
+            message: "Bảng dữ liệu 'customers' chưa được tạo trên Supabase.",
+          };
         }
         throw new Error(error.message);
       }
@@ -155,13 +162,16 @@ export async function deleteCustomerAction(
     if (!isSupabaseConfigured()) {
       demoDeleteCustomer(id);
     } else {
-      const supabase = await createSupabaseServerClient();
+      const supabase = isAdminConfigured()
+        ? createSupabaseAdminClient()
+        : await createSupabaseServerClient();
       const { error } = await supabase.from("customers").delete().eq("id", id);
       if (error) {
         if (isMissingTableError(error)) {
-          demoDeleteCustomer(id);
-          refreshBanHang();
-          return { status: "success", message: "Đã xóa khách hàng." };
+          return {
+            status: "error",
+            message: "Bảng dữ liệu 'customers' chưa được tạo trên Supabase.",
+          };
         }
         if (error.message.includes("foreign key") || error.message.includes("sales_orders")) {
           return { status: "error", message: "Không thể xóa khách hàng đã có đơn bán hàng." };
@@ -236,7 +246,9 @@ export async function createSalesOrderAction(
         items,
       });
     } else {
-      const supabase = await createSupabaseServerClient();
+      const supabase = isAdminConfigured()
+        ? createSupabaseAdminClient()
+        : await createSupabaseServerClient();
       const { data: orderData, error: orderError } = await supabase
         .from("sales_orders")
         .insert({

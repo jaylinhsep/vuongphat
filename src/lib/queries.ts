@@ -25,6 +25,7 @@ import {
 } from "@/lib/demo/store";
 import { lastMonths, monthKey, periodBounds, startOfMonthISO, todayISO } from "@/lib/format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 import type {
   AttendanceRow,
   AttendanceSummary,
@@ -663,7 +664,9 @@ export async function getPayrollAdjustments(
 export async function getCustomers(search?: string): Promise<Customer[]> {
   if (!isSupabaseConfigured()) return demoCustomers(search);
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = isAdminConfigured()
+    ? createSupabaseAdminClient()
+    : await createSupabaseServerClient();
   let query = supabase.from("customers").select("*").order("name");
   const keyword = safeSearch(search);
   if (keyword) {
