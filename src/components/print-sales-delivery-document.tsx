@@ -20,9 +20,11 @@ function formatPrintTime(value: Date): string {
 export function PrintSalesDeliveryDocument({
   order,
   printerName,
+  title = "PHIẾU GIAO HÀNG",
 }: {
   order: SalesOrderRow;
   printerName: string;
+  title?: string;
 }) {
   const [printedAt, setPrintedAt] = useState("");
 
@@ -61,7 +63,7 @@ export function PrintSalesDeliveryDocument({
           </div>
           <div className="text-right">
             <h1 className="text-xl font-bold uppercase tracking-wide">
-              PHIẾU XUẤT KHO KIÊM GIAO HÀNG
+              {title}
             </h1>
             <p className="font-mono text-sm font-semibold text-neutral-800">
               Mã đơn: {order.code}

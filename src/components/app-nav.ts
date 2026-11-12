@@ -112,6 +112,12 @@ export const NAV_SECTIONS: NavSection[] = [
         allowed: CAN_ACCESS.sanXuat,
       },
       {
+        href: "/san-xuat/don-hang",
+        label: "Thông tin đơn hàng",
+        icon: ClipboardList,
+        allowed: CAN_ACCESS.sanXuat,
+      },
+      {
         href: "/san-xuat/cong-thuc",
         label: "Công thức (BOM)",
         icon: FlaskConical,

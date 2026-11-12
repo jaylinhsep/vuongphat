@@ -6,7 +6,6 @@ import {
   FactoryIcon,
   FlaskConicalIcon,
   PrinterIcon,
-  TruckIcon,
 } from "lucide-react";
 import { ConfirmOrderButton } from "@/components/forms/confirm-order-button";
 import { ProductionOrderDialog } from "@/components/forms/production-order-form";
@@ -185,16 +184,6 @@ export default async function SanXuatPage() {
                             In lệnh
                           </a>
                         </Button>
-                        <Button asChild size="sm" variant="outline" className="h-8 text-xs">
-                          <a
-                            href={`/san-xuat/in-giao-hang/${order.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <TruckIcon className="h-3.5 w-3.5 mr-1" />
-                            Phiếu giao
-                          </a>
-                        </Button>
                         {order.status === "cho_xac_nhan" && (
                           <ConfirmOrderButton
                             orderId={order.id}
@@ -223,7 +212,7 @@ export default async function SanXuatPage() {
                       <TableHead>Trạng thái</TableHead>
                       <TableHead>Hoàn thành lúc</TableHead>
                       <TableHead>Ghi chú</TableHead>
-                      <TableHead className="text-center w-52">In ấn</TableHead>
+                      <TableHead className="text-center">In lệnh</TableHead>
                       <TableHead className="text-right">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -285,30 +274,17 @@ export default async function SanXuatPage() {
                             {order.note ?? "—"}
                           </TableCell>
                           <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <Button asChild size="sm" variant="outline" className="h-8 px-2 text-xs">
-                                <a
-                                  href={`/san-xuat/in-lenh/${order.id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title="In lệnh sản xuất"
-                                >
-                                  <PrinterIcon className="h-3.5 w-3.5 mr-1" />
-                                  In lệnh
-                                </a>
-                              </Button>
-                              <Button asChild size="sm" variant="outline" className="h-8 px-2 text-xs">
-                                <a
-                                  href={`/san-xuat/in-giao-hang/${order.id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title="In phiếu giao hàng thành phẩm (không hiện giá)"
-                                >
-                                  <TruckIcon className="h-3.5 w-3.5 mr-1" />
-                                  Phiếu giao
-                                </a>
-                              </Button>
-                            </div>
+                            <Button asChild size="sm" variant="outline" className="h-8 px-2 text-xs">
+                              <a
+                                href={`/san-xuat/in-lenh/${order.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="In lệnh sản xuất"
+                              >
+                                <PrinterIcon className="h-3.5 w-3.5 mr-1" />
+                                In lệnh
+                              </a>
+                            </Button>
                           </TableCell>
                           <TableCell className="text-right">
                             {order.status === "cho_xac_nhan" ? (

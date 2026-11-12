@@ -9,7 +9,9 @@ export default async function PrintSalesDeliveryPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const user = await requireRole(CAN_ACCESS.banHang);
+  const user = await requireRole(
+    (role) => CAN_ACCESS.banHang(role) || CAN_ACCESS.sanXuat(role),
+  );
   const { id } = await params;
 
   const order = await getSalesOrder(id);
