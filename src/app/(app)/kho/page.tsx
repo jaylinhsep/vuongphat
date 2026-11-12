@@ -9,6 +9,7 @@ import {
   Settings2Icon,
 } from "lucide-react";
 import { ItemTypeBadge } from "@/components/status-badges";
+import { DeleteItemDialog } from "@/components/forms/delete-item-dialog";
 import { ItemFormDialog } from "@/components/forms/master-data-forms";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
@@ -231,7 +232,7 @@ export default async function KhoPage({
                   <TableHead className="text-right">Đơn giá</TableHead>
                   <TableHead className="text-right">Giá trị tồn</TableHead>
                   <TableHead>Trạng thái</TableHead>
-                  {canWrite && <TableHead className="w-12 text-center">Sửa</TableHead>}
+                  {canWrite && <TableHead className="w-20 text-center">Thao tác</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -328,7 +329,10 @@ export default async function KhoPage({
                         </TableCell>
                         {canWrite && (
                           <TableCell className="text-center">
-                            <ItemFormDialog item={item} />
+                            <div className="flex items-center justify-center gap-1">
+                              <ItemFormDialog item={item} />
+                              <DeleteItemDialog item={item} />
+                            </div>
                           </TableCell>
                         )}
                       </TableRow>

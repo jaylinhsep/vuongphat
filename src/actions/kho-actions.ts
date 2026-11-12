@@ -7,12 +7,14 @@ import {
   demoCreateItem,
   demoCreateMovement,
   demoCreateSupplier,
+  demoDeleteItem,
   demoUpdateItem,
 } from "@/lib/demo/store";
 import { errorState, type FormState } from "@/lib/form-state";
 import { parseNumber } from "@/lib/format";
 import { CAN_ACCESS } from "@/lib/labels";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isMissingTableError } from "@/lib/supabase/errors";
 import type { ItemType, MovementType } from "@/lib/types";
 
 async function requireKhoWrite() {
@@ -360,6 +362,54 @@ export async function createSupplierAction(
 
     refreshKho();
     return { status: "success", message: `Đã thêm nhà cung cấp ${name}.` };
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function deleteItemAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await requireKhoWrite();
+
+    const id = String(formData.get("id") ?? "");
+    const confirmation = String(formData.get("confirmation") ?? "").trim().toLowerCase();
+
+    if (!id) return { status: "error", message: "Thiếu mã hàng hóa cần xóa." };
+    if (confirmation !== "ok") {
+      return { status: "error", message: 'Vui lòng gõ chính xác "ok" để xác nhận xóa.' };
+    }
+
+    if (!isSupabaseConfigured()) {
+      demoDeleteItem(id);
+    } else {
+      const supabase = await createSupabaseServerClient();
+      const { error } = await supabase.from("items").delete().eq("id", id);
+      if (error) {
+        if (isMissingTableError(error)) {
+          demoDeleteItem(id);
+        } else if (
+          error.message.includes("foreign key") ||
+          error.code === "23503" ||
+          error.message.includes("violates foreign key constraint")
+        ) {
+          return {
+            status: "error",
+            message:
+              "Không thể xóa hàng hóa này do đã có dữ liệu phiếu kho, đơn hàng hoặc công thức BOM liên quan.",
+          };
+        } else {
+          throw new Error(error.message);
+        }
+      }
+    }
+
+    refreshKho();
+    revalidatePath("/san-xuat");
+    revalidatePath("/san-xuat/cong-thuc");
+    return { status: "success", message: "Đã xóa hàng hóa thành công." };
   } catch (error) {
     return errorState(error);
   }

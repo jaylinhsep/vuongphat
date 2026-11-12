@@ -1,4 +1,5 @@
 import { BoxesIcon, TruckIcon } from "lucide-react";
+import { DeleteItemDialog } from "@/components/forms/delete-item-dialog";
 import {
   ItemFormDialog,
   SupplierFormDialog,
@@ -69,7 +70,7 @@ export default async function DanhMucPage() {
                   <TableHead>Quy cách đóng gói</TableHead>
                   <TableHead className="text-right">Đơn giá</TableHead>
                   <TableHead className="text-right">Tồn hiện tại</TableHead>
-                  {canWrite && <TableHead className="w-12 text-center">Sửa</TableHead>}
+                  {canWrite && <TableHead className="w-20 text-center">Thao tác</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -114,7 +115,10 @@ export default async function DanhMucPage() {
                       </TableCell>
                       {canWrite && (
                         <TableCell className="text-right">
-                          <ItemFormDialog item={item} />
+                          <div className="flex items-center justify-end gap-1">
+                            <ItemFormDialog item={item} />
+                            <DeleteItemDialog item={item} />
+                          </div>
                         </TableCell>
                       )}
                     </TableRow>

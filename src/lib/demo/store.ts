@@ -866,6 +866,19 @@ export function demoUpdateItem(input: {
   }
 }
 
+export function demoDeleteItem(id: string): void {
+  const state = db();
+  const itemIndex = state.items.findIndex((item) => item.id === id);
+  if (itemIndex === -1) throw new Error("Không tìm thấy hàng hóa cần xóa");
+
+  // Dọn các bản ghi phụ thuộc trong demo store để người dùng test xóa không bị kẹt
+  state.movements = state.movements.filter((m) => m.item_id !== id);
+  state.salesOrderItems = state.salesOrderItems.filter((soi) => soi.item_id !== id);
+  state.purchaseOrderItems = state.purchaseOrderItems.filter((poi) => poi.item_id !== id);
+
+  state.items.splice(itemIndex, 1);
+}
+
 export function demoCreateSupplier(input: { name: string; phone?: string; note?: string }): void {
   const state = db();
   const name = input.name.trim();
