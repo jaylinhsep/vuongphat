@@ -13,7 +13,6 @@ import type {
   CashType,
   ItemType,
   MovementType,
-  PaymentMethod,
   PaymentStatus,
   ProductionStatus,
   PurchaseOrderStatus,

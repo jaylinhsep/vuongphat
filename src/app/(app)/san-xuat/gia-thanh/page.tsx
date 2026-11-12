@@ -1,13 +1,11 @@
 import Link from "next/link";
 import {
   AlertTriangleIcon,
-  CalculatorIcon,
   ChevronLeftIcon,
   CoinsIcon,
   DownloadIcon,
   FactoryIcon,
   FilterIcon,
-  PercentIcon,
   TrendingUpIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
@@ -44,8 +42,6 @@ import {
   formatDate,
   formatNumber,
   formatQuantity,
-  startOfMonthISO,
-  todayISO,
 } from "@/lib/format";
 import { CAN_ACCESS } from "@/lib/labels";
 import { getItems, getProductionCostReport } from "@/lib/queries";

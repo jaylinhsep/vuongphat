@@ -25,9 +25,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { initialFormState } from "@/lib/form-state";
-import { formatCurrency, formatQuantity } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import type { BomRow, Item } from "@/lib/types";
 
 type Line = { materialId: string; quantity: string };

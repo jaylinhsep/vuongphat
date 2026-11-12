@@ -19,7 +19,6 @@ import type {
   MovementRow,
   MovementType,
   PaymentMethod,
-  PaymentStatus,
   PayrollAdjustment,
   PayrollAdjustmentRow,
   PayrollRow,
@@ -44,7 +43,7 @@ import type {
   TaskRow,
   TaskStatus,
 } from "@/lib/types";
-import { currentPeriod, lastMonths, monthKey, periodBounds, todayISO } from "@/lib/format";
+import { currentPeriod, lastMonths, monthKey, todayISO } from "@/lib/format";
 
 type DemoState = {
   items: Item[];

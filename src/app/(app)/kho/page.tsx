@@ -49,10 +49,6 @@ export default async function KhoPage({
       ? inventory
       : inventory.filter((item) => item.type === selectedType);
 
-  const totalValue = inventory.reduce(
-    (total, item) => total + Math.max(item.on_hand, 0) * item.unit_price,
-    0,
-  );
   const nlValue = inventory
     .filter((item) => item.type === "nguyen_lieu")
     .reduce(

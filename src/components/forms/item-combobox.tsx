@@ -137,7 +137,7 @@ export function ItemCombobox({
         {/* Results count hint */}
         <div className="px-3 py-1 bg-neutral-100/70 border-b flex items-center justify-between text-[11px] text-muted-foreground">
           <span>Tìm thấy {filteredItems.length} mặt hàng</span>
-          {search && <span className="italic">Lọc theo: "{search}"</span>}
+          {search && <span className="italic">Lọc theo: &ldquo;{search}&rdquo;</span>}
         </div>
 
         {/* Item List */}
