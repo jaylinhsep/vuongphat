@@ -720,13 +720,15 @@ export async function getSalesOrders(
 ): Promise<SalesOrderRow[]> {
   if (!isSupabaseConfigured()) return demoSalesOrders(status);
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = isAdminConfigured()
+    ? createSupabaseAdminClient()
+    : await createSupabaseServerClient();
   let query = supabase
     .from("sales_orders")
     .select(
       `*,
        customer:customers(name, phone, address),
-       items:sales_order_items(*, item:items(name, code, unit, packing_spec, pack_size, pack_unit))`,
+       items:sales_order_items(*, item:items(*))`,
     )
     .order("order_date", { ascending: false })
     .order("created_at", { ascending: false });
@@ -777,13 +779,15 @@ export async function getSalesOrders(
 export async function getSalesOrder(id: string): Promise<SalesOrderRow | null> {
   if (!isSupabaseConfigured()) return demoSalesOrder(id);
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = isAdminConfigured()
+    ? createSupabaseAdminClient()
+    : await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("sales_orders")
     .select(
       `*,
        customer:customers(name, phone, address),
-       items:sales_order_items(*, item:items(name, code, unit, packing_spec, pack_size, pack_unit))`,
+       items:sales_order_items(*, item:items(*))`,
     )
     .eq("id", id)
     .maybeSingle();
@@ -967,7 +971,9 @@ export async function getPurchaseOrder(id: string): Promise<PurchaseOrderRow | n
 export async function getCustomerDebts(): Promise<CustomerDebtRow[]> {
   if (!isSupabaseConfigured()) return demoCustomerDebts();
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = isAdminConfigured()
+    ? createSupabaseAdminClient()
+    : await createSupabaseServerClient();
   const { data: customers, error: cErr } = await supabase
     .from("customers")
     .select("id, code, name, phone")
