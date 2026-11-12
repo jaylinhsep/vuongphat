@@ -99,7 +99,9 @@ export function ItemCombobox({
             )}
             <span className="truncate">
               {selectedItem
-                ? `${selectedItem.name} (${selectedItem.code})`
+                ? `${selectedItem.name} (${selectedItem.code})${
+                    selectedItem.packing_spec ? ` — ${selectedItem.packing_spec}` : ""
+                  }`
                 : placeholder}
             </span>
           </div>
@@ -175,6 +177,11 @@ export function ItemCombobox({
                       <span className="font-mono text-[11px] text-neutral-500">
                         ({item.code})
                       </span>
+                      {item.packing_spec && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                          {item.packing_spec}
+                        </span>
+                      )}
                     </div>
                     {typeof item.on_hand === "number" && (
                       <div className="text-[11px] text-neutral-500 mt-0.5 flex gap-3">

@@ -3,7 +3,7 @@
 -- Hướng dẫn: Mở Supabase Dashboard > SQL Editor > Dán toàn bộ nội dung này và bấm "Run" (hoặc Ctrl + Enter).
 -- ============================================================================
 
--- 1. Kiểu dữ liệu / Enums
+-- 1. Kiểu dữ liệu / Enums & Cột quy cách đóng gói
 do $$ begin
   create type public.payment_status as enum ('chua_thanh_toan', 'thanh_toan_mot_phan', 'da_thanh_toan');
 exception when duplicate_object then null; end $$;
@@ -15,6 +15,11 @@ exception when duplicate_object then null; end $$;
 do $$ begin
   create type public.purchase_order_status as enum ('cho_nhap_kho', 'da_nhap_kho', 'huy');
 exception when duplicate_object then null; end $$;
+
+-- Bổ sung cột quy cách đóng gói cho bảng hàng hóa items
+alter table public.items add column if not exists packing_spec text;
+alter table public.items add column if not exists pack_size numeric(14, 3);
+alter table public.items add column if not exists pack_unit text;
 
 -- 2. Bảng khách hàng (Customers)
 create table if not exists public.customers (

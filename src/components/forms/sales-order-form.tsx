@@ -213,6 +213,11 @@ export function CreateSalesOrderDialog({
                           onChange={(val) => updateItem(line.id, val)}
                           placeholder="Gõ tìm hoặc chọn mặt hàng..."
                         />
+                        {selectedItem?.packing_spec && (
+                          <div className="mt-1 text-[11px] text-blue-600 font-medium">
+                            📦 Quy cách: {selectedItem.packing_spec}
+                          </div>
+                        )}
                       </div>
                       {lines.length > 1 && (
                         <Button
@@ -305,6 +310,11 @@ export function CreateSalesOrderDialog({
                           onChange={(val) => updateItem(line.id, val)}
                           placeholder="Gõ tìm hoặc chọn mặt hàng..."
                         />
+                        {selectedItem?.packing_spec && (
+                          <div className="mt-1 text-[11px] text-blue-600 font-medium">
+                            📦 Quy cách: {selectedItem.packing_spec}
+                          </div>
+                        )}
                       </div>
 
                       <div className="w-24">

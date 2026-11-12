@@ -179,7 +179,9 @@ export async function createItemAction(
     if (!isSupabaseConfigured()) {
       demoCreateItem(payload);
     } else {
-      const supabase = await createSupabaseServerClient();
+      const supabase = isAdminConfigured()
+        ? createSupabaseAdminClient()
+        : await createSupabaseServerClient();
       const dbPayload: Record<string, unknown> = {
         code: payload.code,
         name: payload.name,
@@ -284,7 +286,9 @@ export async function updateItemAction(
     if (!isSupabaseConfigured()) {
       demoUpdateItem(payload);
     } else {
-      const supabase = await createSupabaseServerClient();
+      const supabase = isAdminConfigured()
+        ? createSupabaseAdminClient()
+        : await createSupabaseServerClient();
       const dbPayload: Record<string, unknown> = {
         code: payload.code,
         name: payload.name,
