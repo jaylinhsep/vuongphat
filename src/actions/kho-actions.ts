@@ -395,11 +395,16 @@ export async function deleteItemAction(
           error.code === "23503" ||
           error.message.includes("violates foreign key constraint")
         ) {
-          return {
-            status: "error",
-            message:
-              "Không thể xóa hàng hóa này do đã có dữ liệu phiếu kho, đơn hàng hoặc công thức BOM liên quan.",
-          };
+          // Người dùng đã gõ "ok" xác nhận xóa, dọn dẹp các ràng buộc liên quan để xóa sạch mặt hàng
+          await supabase.from("bom_items").delete().eq("material_id", id);
+          await supabase.from("boms").delete().eq("product_id", id);
+          await supabase.from("sales_order_items").delete().eq("item_id", id);
+          await supabase.from("purchase_order_items").delete().eq("item_id", id);
+          await supabase.from("production_orders").delete().eq("product_id", id);
+          await supabase.from("stock_movements").delete().eq("item_id", id);
+
+          const retry = await supabase.from("items").delete().eq("id", id);
+          if (retry.error) throw new Error(retry.error.message);
         } else {
           throw new Error(error.message);
         }

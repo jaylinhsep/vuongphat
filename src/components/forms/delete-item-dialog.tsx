@@ -52,11 +52,11 @@ export function DeleteItemDialog({ item }: { item: InventoryItem }) {
         <Button
           size="icon-sm"
           variant="ghost"
-          className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50"
+          className="text-rose-500 hover:text-rose-700 hover:bg-rose-50"
           aria-label="Xóa hàng hóa"
           title="Xóa hàng hóa"
         >
-          <Trash2Icon className="size-3.5" />
+          <Trash2Icon className="size-4" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

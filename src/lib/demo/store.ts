@@ -875,6 +875,11 @@ export function demoDeleteItem(id: string): void {
   state.movements = state.movements.filter((m) => m.item_id !== id);
   state.salesOrderItems = state.salesOrderItems.filter((soi) => soi.item_id !== id);
   state.purchaseOrderItems = state.purchaseOrderItems.filter((poi) => poi.item_id !== id);
+  state.orders = state.orders.filter((po) => po.product_id !== id);
+  state.boms = state.boms.filter((b) => b.product_id !== id);
+  for (const bom of state.boms) {
+    bom.items = bom.items.filter((bi) => bi.material_id !== id);
+  }
 
   state.items.splice(itemIndex, 1);
 }
