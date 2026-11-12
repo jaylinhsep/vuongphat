@@ -9,7 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import type { InventoryItem } from "@/lib/types";
+import type { Item } from "@/lib/types";
 
 function removeVietnameseTones(str: string): string {
   return str
@@ -40,7 +40,7 @@ export function ItemCombobox({
   className = "",
   disabled = false,
 }: {
-  items: InventoryItem[];
+  items: (Item & { on_hand?: number })[];
   value: string;
   onChange: (itemId: string) => void;
   placeholder?: string;
@@ -176,14 +176,16 @@ export function ItemCombobox({
                         ({item.code})
                       </span>
                     </div>
-                    <div className="text-[11px] text-neutral-500 mt-0.5 flex gap-3">
-                      <span>
-                        Tồn kho:{" "}
-                        <strong className="text-neutral-700">
-                          {item.on_hand} {item.unit}
-                        </strong>
-                      </span>
-                    </div>
+                    {typeof item.on_hand === "number" && (
+                      <div className="text-[11px] text-neutral-500 mt-0.5 flex gap-3">
+                        <span>
+                          Tồn kho:{" "}
+                          <strong className="text-neutral-700">
+                            {item.on_hand} {item.unit}
+                          </strong>
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {isSelected && (

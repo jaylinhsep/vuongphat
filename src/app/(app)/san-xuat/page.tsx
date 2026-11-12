@@ -78,7 +78,7 @@ export default async function SanXuatPage() {
               </Link>
             </Button>
           )}
-          <ProductionOrderDialog products={products} />
+          <ProductionOrderDialog products={products} boms={boms} />
         </div>
       </PageHeader>
 

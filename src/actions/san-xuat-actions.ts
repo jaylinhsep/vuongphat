@@ -141,30 +141,71 @@ export async function createProductionOrderAction(
     await requireProductionWrite();
 
     const productId = String(formData.get("product_id") ?? "");
-    const quantity = parseNumber(formData.get("quantity"));
     const plannedDate = String(formData.get("planned_date") ?? "") || todayISO();
     const note = String(formData.get("note") ?? "").trim();
+    const isSplit = formData.get("is_split") === "true";
+    const splitBatchesRaw = String(formData.get("split_batches") ?? "");
 
     if (!productId) return { status: "error", message: "Vui lòng chọn thành phẩm." };
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      return { status: "error", message: "Số lượng phải lớn hơn 0." };
+
+    let batches: Array<{ quantity: number; noteSuffix?: string }> = [];
+
+    if (isSplit && splitBatchesRaw) {
+      try {
+        batches = JSON.parse(splitBatchesRaw);
+      } catch {
+        batches = [];
+      }
+    }
+
+    if (batches.length === 0) {
+      const quantity = parseNumber(formData.get("quantity"));
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        return { status: "error", message: "Số lượng phải lớn hơn 0." };
+      }
+      batches = [{ quantity }];
+    }
+
+    for (const b of batches) {
+      if (!Number.isFinite(b.quantity) || b.quantity <= 0) {
+        return { status: "error", message: "Số lượng từng mẻ lệnh phải lớn hơn 0." };
+      }
     }
 
     if (!isSupabaseConfigured()) {
-      demoCreateOrder({ productId, quantity, plannedDate, note });
+      for (const b of batches) {
+        const orderNote = [note, b.noteSuffix].filter(Boolean).join(" — ");
+        demoCreateOrder({
+          productId,
+          quantity: b.quantity,
+          plannedDate,
+          note: orderNote || null,
+        });
+      }
     } else {
       const supabase = await createSupabaseServerClient();
-      const { error } = await supabase.from("production_orders").insert({
-        product_id: productId,
-        quantity,
-        planned_date: plannedDate,
-        note: note || null,
+      const rows = batches.map((b) => {
+        const orderNote = [note, b.noteSuffix].filter(Boolean).join(" — ");
+        return {
+          product_id: productId,
+          quantity: b.quantity,
+          planned_date: plannedDate,
+          note: orderNote || null,
+        };
       });
+
+      const { error } = await supabase.from("production_orders").insert(rows);
       if (error) throw new Error(error.message);
     }
 
     refreshSanXuat();
-    return { status: "success", message: "Đã tạo lệnh sản xuất." };
+    return {
+      status: "success",
+      message:
+        batches.length > 1
+          ? `Đã tạo thành công ${batches.length} lệnh sản xuất riêng biệt.`
+          : "Đã tạo lệnh sản xuất thành công.",
+    };
   } catch (error) {
     return errorState(error);
   }
