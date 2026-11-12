@@ -172,6 +172,25 @@ export function ItemFormDialog({ item }: { item?: InventoryItem }) {
               </p>
             </div>
 
+            {/* Tên thương mại */}
+            <div className="space-y-1.5 sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="item-commercial-name" className="text-xs font-semibold text-neutral-900">
+                  Tên thương mại mặc định (Áp dụng khi xuất bán)
+                </Label>
+                <span className="text-[11px] text-muted-foreground">
+                  Ví dụ: MỰC IN BAO BÌ TRẮNG CHỊU NHIỆT
+                </span>
+              </div>
+              <Input
+                id="item-commercial-name"
+                name="commercial_name"
+                defaultValue={item?.commercial_name ?? ""}
+                placeholder="Để trống nếu trùng tên hàng nội bộ"
+                className="h-8 text-xs bg-white"
+              />
+            </div>
+
             {/* Quy cách đóng gói */}
             <div className="space-y-2 sm:col-span-2 rounded-lg border border-neutral-200 bg-neutral-50/80 p-3">
               <div className="flex items-center justify-between">

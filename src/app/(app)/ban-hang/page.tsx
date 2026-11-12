@@ -222,7 +222,7 @@ export default async function BanHangPage({
                           {order.items.map((item) => (
                             <div key={item.id} className="flex justify-between text-neutral-700">
                               <span>
-                                • {item.item_name} ({item.quantity} {item.item_unit})
+                                • {item.commercial_name || item.item_name} ({item.quantity} {item.item_unit})
                               </span>
                               <span className="font-mono text-neutral-600">
                                 {formatCurrency(item.quantity * item.unit_price)}
@@ -344,7 +344,13 @@ export default async function BanHangPage({
                             <div className="space-y-0.5">
                               {order.items.map((item) => (
                                 <div key={item.id} className="leading-snug text-neutral-700">
-                                  <span className="font-medium">• {item.item_name}</span>:{" "}
+                                  <span className="font-medium">• {item.commercial_name || item.item_name}</span>
+                                  {item.commercial_name && item.commercial_name !== item.item_name && (
+                                    <span className="text-[10px] text-neutral-400 font-mono ml-1">
+                                      ({item.item_code})
+                                    </span>
+                                  )}
+                                  :{" "}
                                   <span className="font-bold font-mono text-neutral-900">
                                     {item.quantity} {item.item_unit}
                                   </span>{" "}

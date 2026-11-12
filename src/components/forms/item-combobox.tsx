@@ -63,7 +63,8 @@ export function ItemCombobox({
     return items.filter((item) => {
       const cleanName = removeVietnameseTones(item.name);
       const cleanCode = removeVietnameseTones(item.code);
-      const rawText = `${cleanName} ${cleanCode} ${item.type}`;
+      const cleanComm = item.commercial_name ? removeVietnameseTones(item.commercial_name) : "";
+      const rawText = `${cleanName} ${cleanCode} ${cleanComm} ${item.type}`;
       return tokens.every((token) => rawText.includes(token));
     });
   }, [items, search]);
@@ -177,6 +178,11 @@ export function ItemCombobox({
                       <span className="font-mono text-[11px] text-neutral-500">
                         ({item.code})
                       </span>
+                      {item.commercial_name && (
+                        <span className="text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200">
+                          {item.commercial_name}
+                        </span>
+                      )}
                       {item.packing_spec && (
                         <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200">
                           {item.packing_spec}

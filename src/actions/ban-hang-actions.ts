@@ -201,17 +201,23 @@ export async function createSalesOrderAction(
     const deliveryDate = String(formData.get("delivery_date") ?? "") || null;
     const note = String(formData.get("note") ?? "").trim();
 
-    let items: { itemId: string; quantity: number; unitPrice: number }[] = [];
+    let items: { itemId: string; quantity: number; unitPrice: number; commercialName?: string }[] = [];
     try {
       const raw = JSON.parse(String(formData.get("items") ?? "[]")) as unknown;
       if (Array.isArray(raw)) {
         items = raw
           .map((line) => {
-            const entry = line as { itemId?: unknown; quantity?: unknown; unitPrice?: unknown };
+            const entry = line as {
+              itemId?: unknown;
+              quantity?: unknown;
+              unitPrice?: unknown;
+              commercialName?: unknown;
+            };
             return {
               itemId: String(entry.itemId ?? ""),
               quantity: Number(entry.quantity),
               unitPrice: Number(entry.unitPrice),
+              commercialName: String(entry.commercialName ?? "").trim() || undefined,
             };
           })
           .filter(
@@ -279,14 +285,21 @@ export async function createSalesOrderAction(
       const itemsPayload = items.map((line) => ({
         order_id: orderData.id,
         item_id: line.itemId,
+        commercial_name: line.commercialName || null,
         quantity: line.quantity,
         unit_price: line.unitPrice,
         total_price: line.quantity * line.unitPrice,
       }));
 
-      const { error: itemsError } = await supabase
+      let { error: itemsError } = await supabase
         .from("sales_order_items")
         .insert(itemsPayload);
+
+      if (itemsError && itemsError.message.includes("commercial_name")) {
+        const fallbackPayload = itemsPayload.map(({ commercial_name, ...rest }) => rest);
+        const retry = await supabase.from("sales_order_items").insert(fallbackPayload);
+        itemsError = retry.error;
+      }
 
       if (itemsError) {
         if (isMissingTableError(itemsError)) {
@@ -328,17 +341,23 @@ export async function updateSalesOrderAction(
     const deliveryDate = String(formData.get("delivery_date") ?? "") || null;
     const note = String(formData.get("note") ?? "").trim();
 
-    let items: { itemId: string; quantity: number; unitPrice: number }[] = [];
+    let items: { itemId: string; quantity: number; unitPrice: number; commercialName?: string }[] = [];
     try {
       const raw = JSON.parse(String(formData.get("items") ?? "[]")) as unknown;
       if (Array.isArray(raw)) {
         items = raw
           .map((line) => {
-            const entry = line as { itemId?: unknown; quantity?: unknown; unitPrice?: unknown };
+            const entry = line as {
+              itemId?: unknown;
+              quantity?: unknown;
+              unitPrice?: unknown;
+              commercialName?: unknown;
+            };
             return {
               itemId: String(entry.itemId ?? ""),
               quantity: Number(entry.quantity),
               unitPrice: Number(entry.unitPrice),
+              commercialName: String(entry.commercialName ?? "").trim() || undefined,
             };
           })
           .filter(
@@ -410,14 +429,21 @@ export async function updateSalesOrderAction(
       const itemsPayload = items.map((line) => ({
         order_id: id,
         item_id: line.itemId,
+        commercial_name: line.commercialName || null,
         quantity: line.quantity,
         unit_price: line.unitPrice,
         total_price: line.quantity * line.unitPrice,
       }));
 
-      const { error: itemsError } = await supabase
+      let { error: itemsError } = await supabase
         .from("sales_order_items")
         .insert(itemsPayload);
+
+      if (itemsError && itemsError.message.includes("commercial_name")) {
+        const fallbackPayload = itemsPayload.map(({ commercial_name, ...rest }) => rest);
+        const retry = await supabase.from("sales_order_items").insert(fallbackPayload);
+        itemsError = retry.error;
+      }
 
       if (itemsError) throw new Error(itemsError.message);
     }

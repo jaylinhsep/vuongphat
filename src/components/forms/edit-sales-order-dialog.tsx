@@ -31,6 +31,7 @@ import type { Customer, InventoryItem, SalesOrderRow } from "@/lib/types";
 type OrderLine = {
   id: string;
   itemId: string;
+  commercialName: string;
   quantity: string;
   unitPrice: string;
 };
@@ -54,10 +55,11 @@ export function EditSalesOrderDialog({
       ? order.items.map((item, idx) => ({
           id: `line-${item.id || idx}`,
           itemId: item.item_id,
+          commercialName: item.commercial_name || "",
           quantity: String(item.quantity),
           unitPrice: String(item.unit_price),
         }))
-      : [{ id: "line-1", itemId: "", quantity: "1", unitPrice: "0" }],
+      : [{ id: "line-1", itemId: "", commercialName: "", quantity: "1", unitPrice: "0" }],
   );
 
   const resetForm = () => {
@@ -70,17 +72,18 @@ export function EditSalesOrderDialog({
         ? order.items.map((item, idx) => ({
             id: `line-${item.id || idx}`,
             itemId: item.item_id,
+            commercialName: item.commercial_name || "",
             quantity: String(item.quantity),
             unitPrice: String(item.unit_price),
           }))
-        : [{ id: "line-1", itemId: "", quantity: "1", unitPrice: "0" }],
+        : [{ id: "line-1", itemId: "", commercialName: "", quantity: "1", unitPrice: "0" }],
     );
   };
 
   const addLine = () => {
     setLines((prev) => [
       ...prev,
-      { id: `line-${Date.now()}`, itemId: "", quantity: "1", unitPrice: "0" },
+      { id: `line-${Date.now()}`, itemId: "", commercialName: "", quantity: "1", unitPrice: "0" },
     ]);
   };
 
@@ -96,10 +99,17 @@ export function EditSalesOrderDialog({
           ? {
               ...l,
               itemId,
+              commercialName: selected ? (selected.commercial_name || selected.name) : "",
               unitPrice: selected ? String(selected.unit_price) : l.unitPrice,
             }
           : l,
       ),
+    );
+  };
+
+  const updateCommercialName = (id: string, value: string) => {
+    setLines((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, commercialName: value } : l)),
     );
   };
 
@@ -127,6 +137,7 @@ export function EditSalesOrderDialog({
         .filter((l) => l.itemId && (parseFloat(l.quantity) || 0) > 0)
         .map((l) => ({
           itemId: l.itemId,
+          commercialName: l.commercialName.trim() || undefined,
           quantity: parseFloat(l.quantity) || 0,
           unitPrice: Math.max(parseFloat(l.unitPrice) || 0, 0),
         }));
@@ -265,15 +276,27 @@ export function EditSalesOrderDialog({
                       <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                         {idx + 1}
                       </span>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 space-y-1">
                         <ItemCombobox
                           items={items}
                           value={line.itemId}
                           onChange={(val) => updateItem(line.id, val)}
                           placeholder="Gõ tìm hoặc chọn mặt hàng..."
                         />
+                        {line.itemId && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-muted-foreground shrink-0 font-medium">Tên in đơn:</span>
+                            <Input
+                              value={line.commercialName}
+                              onChange={(e) => updateCommercialName(line.id, e.target.value)}
+                              placeholder="Tên thương mại cho khách này..."
+                              className="h-6 text-[11px] bg-white px-2"
+                              title="Tên in trên phiếu giao hàng cho khách này"
+                            />
+                          </div>
+                        )}
                         {selectedItem?.packing_spec && (
-                          <div className="mt-1 text-[11px] text-blue-600 font-medium">
+                          <div className="text-[11px] text-blue-600 font-medium">
                             📦 Quy cách: {selectedItem.packing_spec}
                           </div>
                         )}
@@ -362,15 +385,27 @@ export function EditSalesOrderDialog({
                         {idx + 1}
                       </span>
 
-                      <div className="flex-1">
+                      <div className="flex-1 space-y-1">
                         <ItemCombobox
                           items={items}
                           value={line.itemId}
                           onChange={(val) => updateItem(line.id, val)}
                           placeholder="Gõ tìm hoặc chọn mặt hàng..."
                         />
+                        {line.itemId && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-muted-foreground shrink-0 font-medium">Tên in đơn:</span>
+                            <Input
+                              value={line.commercialName}
+                              onChange={(e) => updateCommercialName(line.id, e.target.value)}
+                              placeholder="Tên thương mại in cho khách này..."
+                              className="h-6 text-[11px] bg-neutral-50 px-2 border-neutral-300"
+                              title="Tên in trên phiếu giao hàng cho khách này"
+                            />
+                          </div>
+                        )}
                         {selectedItem?.packing_spec && (
-                          <div className="mt-1 text-[11px] text-blue-600 font-medium">
+                          <div className="text-[10px] text-blue-600 font-medium">
                             📦 Quy cách: {selectedItem.packing_spec}
                           </div>
                         )}

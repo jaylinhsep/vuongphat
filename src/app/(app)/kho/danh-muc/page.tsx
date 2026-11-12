@@ -89,8 +89,13 @@ export default async function DanhMucPage() {
                       <TableCell className="font-mono text-xs">
                         {item.code}
                       </TableCell>
-                      <TableCell className="whitespace-normal font-medium">
-                        {item.name}
+                      <TableCell className="whitespace-normal">
+                        <span className="font-medium text-neutral-900 block">{item.name}</span>
+                        {item.commercial_name && (
+                          <span className="text-[11px] text-purple-700 block mt-0.5 font-normal">
+                            TM: {item.commercial_name}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <ItemTypeBadge type={item.type} />

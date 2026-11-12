@@ -16,7 +16,8 @@ do $$ begin
   create type public.purchase_order_status as enum ('cho_nhap_kho', 'da_nhap_kho', 'huy');
 exception when duplicate_object then null; end $$;
 
--- Bổ sung cột quy cách đóng gói cho bảng hàng hóa items
+-- Bổ sung cột quy cách đóng gói và tên thương mại cho bảng hàng hóa items
+alter table public.items add column if not exists commercial_name text;
 alter table public.items add column if not exists packing_spec text;
 alter table public.items add column if not exists pack_size numeric(14, 3);
 alter table public.items add column if not exists pack_unit text;
@@ -76,11 +77,14 @@ create table if not exists public.sales_order_items (
   id uuid primary key default gen_random_uuid(),
   order_id uuid not null references public.sales_orders (id) on delete cascade,
   item_id uuid not null references public.items (id) on delete restrict,
+  commercial_name text,
   quantity numeric(14, 3) not null check (quantity > 0),
   unit_price numeric(14, 2) not null default 0 check (unit_price >= 0),
   total_price numeric(14, 2) not null default 0 check (total_price >= 0),
   unique (order_id, item_id)
 );
+
+alter table public.sales_order_items add column if not exists commercial_name text;
 
 -- 5. Bảng đơn mua hàng (Purchase Orders) nếu dùng
 create table if not exists public.purchase_orders (

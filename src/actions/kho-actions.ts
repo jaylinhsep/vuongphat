@@ -144,6 +144,7 @@ export async function createItemAction(
     const type = String(formData.get("type") ?? "") as ItemType;
     const unitPrice = parseNumber(formData.get("unit_price"));
     const minStock = parseNumber(formData.get("min_stock"));
+    const commercialName = String(formData.get("commercial_name") ?? "").trim() || null;
     const rawPackingSpec = String(formData.get("packing_spec") ?? "").trim();
     const packSize = parseNumber(formData.get("pack_size"));
     const packUnit = String(formData.get("pack_unit") ?? "").trim() || "thùng";
@@ -170,6 +171,7 @@ export async function createItemAction(
       type,
       unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
       minStock: Number.isFinite(minStock) ? minStock : 0,
+      commercialName,
       packingSpec,
       packSize: Number.isFinite(packSize) && packSize > 0 ? packSize : null,
       packUnit: Number.isFinite(packSize) && packSize > 0 ? packUnit : null,
@@ -189,6 +191,7 @@ export async function createItemAction(
         type: payload.type,
         unit_price: payload.unitPrice,
         min_stock: payload.minStock,
+        commercial_name: payload.commercialName,
         packing_spec: payload.packingSpec,
         pack_size: payload.packSize,
         pack_unit: payload.packUnit,
@@ -200,7 +203,8 @@ export async function createItemAction(
         .select("id")
         .single();
 
-      if (error && (error.message.includes("packing_spec") || error.message.includes("column"))) {
+      if (error && (error.message.includes("commercial_name") || error.message.includes("packing_spec") || error.message.includes("column"))) {
+        delete dbPayload.commercial_name;
         delete dbPayload.packing_spec;
         delete dbPayload.pack_size;
         delete dbPayload.pack_unit;
@@ -249,6 +253,7 @@ export async function updateItemAction(
     const type = String(formData.get("type") ?? "") as ItemType;
     const unitPrice = parseNumber(formData.get("unit_price"));
     const minStock = parseNumber(formData.get("min_stock"));
+    const commercialName = String(formData.get("commercial_name") ?? "").trim() || null;
     const rawPackingSpec = String(formData.get("packing_spec") ?? "").trim();
     const packSize = parseNumber(formData.get("pack_size"));
     const packUnit = String(formData.get("pack_unit") ?? "").trim() || "thùng";
@@ -277,6 +282,7 @@ export async function updateItemAction(
       type,
       unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
       minStock: Number.isFinite(minStock) ? minStock : 0,
+      commercialName,
       packingSpec,
       packSize: Number.isFinite(packSize) && packSize > 0 ? packSize : null,
       packUnit: Number.isFinite(packSize) && packSize > 0 ? packUnit : null,
@@ -296,6 +302,7 @@ export async function updateItemAction(
         type: payload.type,
         unit_price: payload.unitPrice,
         min_stock: payload.minStock,
+        commercial_name: payload.commercialName,
         packing_spec: payload.packingSpec,
         pack_size: payload.packSize,
         pack_unit: payload.packUnit,
@@ -306,7 +313,8 @@ export async function updateItemAction(
         .update(dbPayload)
         .eq("id", id);
 
-      if (error && (error.message.includes("packing_spec") || error.message.includes("column"))) {
+      if (error && (error.message.includes("commercial_name") || error.message.includes("packing_spec") || error.message.includes("column"))) {
+        delete dbPayload.commercial_name;
         delete dbPayload.packing_spec;
         delete dbPayload.pack_size;
         delete dbPayload.pack_unit;

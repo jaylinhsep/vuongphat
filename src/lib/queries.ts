@@ -75,6 +75,7 @@ type DbInventory = {
   type: ItemType;
   unit_price: number | string;
   min_stock: number | string;
+  commercial_name?: string | null;
   packing_spec?: string | null;
   pack_size?: number | string | null;
   pack_unit?: string | null;
@@ -100,11 +101,11 @@ export async function getInventory(search?: string): Promise<InventoryItem[]> {
     throw new Error(error.message);
   }
 
-  // Bổ sung các cột quy cách đóng gói (packing_spec, pack_size, pack_unit) từ bảng items
+  // Bổ sung các cột quy cách đóng gói và tên thương mại từ bảng items
   // phòng trường hợp view database item_stock chưa kịp cập nhật các cột này
   const { data: itemSpecs } = await supabase
     .from("items")
-    .select("id, packing_spec, pack_size, pack_unit");
+    .select("id, commercial_name, packing_spec, pack_size, pack_unit");
   const specMap = new Map(
     ((itemSpecs as unknown as DbInventory[]) ?? []).map((i) => [i.id, i]),
   );
@@ -119,6 +120,7 @@ export async function getInventory(search?: string): Promise<InventoryItem[]> {
       type: row.type,
       unit_price: num(row.unit_price),
       min_stock: num(row.min_stock),
+      commercial_name: row.commercial_name ?? spec?.commercial_name ?? null,
       packing_spec: row.packing_spec ?? spec?.packing_spec ?? null,
       pack_size: row.pack_size
         ? num(row.pack_size)
@@ -706,10 +708,12 @@ type DbSalesOrderItem = {
   quantity: number | string;
   unit_price: number | string;
   total_price: number | string;
+  commercial_name?: string | null;
   item: {
     name: string;
     code: string;
     unit: string;
+    commercial_name?: string | null;
     packing_spec?: string | null;
     pack_size?: number | string | null;
     pack_unit?: string | null;
@@ -787,6 +791,7 @@ export async function getSalesOrders(
       item_name: i.item?.name ?? "—",
       item_code: i.item?.code ?? "—",
       item_unit: i.item?.unit ?? "—",
+      commercial_name: i.commercial_name || i.item?.commercial_name || null,
       packing_spec: i.item?.packing_spec ?? null,
       pack_size: i.item?.pack_size ? num(i.item.pack_size) : null,
       pack_unit: i.item?.pack_unit ?? null,
@@ -843,6 +848,7 @@ export async function getSalesOrder(id: string): Promise<SalesOrderRow | null> {
       item_name: i.item?.name ?? "—",
       item_code: i.item?.code ?? "—",
       item_unit: i.item?.unit ?? "—",
+      commercial_name: i.commercial_name || i.item?.commercial_name || null,
       packing_spec: i.item?.packing_spec ?? null,
       pack_size: i.item?.pack_size ? num(i.item.pack_size) : null,
       pack_unit: i.item?.pack_unit ?? null,
