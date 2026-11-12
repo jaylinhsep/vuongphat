@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PrinterIcon, XIcon } from "lucide-react";
+import { Edit3Icon, PrinterIcon, SaveIcon, XIcon } from "lucide-react";
+import { toast } from "sonner";
+import { updateProductionOrderNoteAction } from "@/actions/san-xuat-actions";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatDateTime, formatQuantity } from "@/lib/format";
 import { PRODUCTION_STATUS_LABELS } from "@/lib/labels";
@@ -28,12 +30,30 @@ export function PrintOrderDocument({
   printerName: string;
 }) {
   const [printedAt, setPrintedAt] = useState("");
+  const [noteText, setNoteText] = useState(order.note || "");
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   useEffect(() => {
     setPrintedAt(formatPrintTime(new Date()));
-    const timer = setTimeout(() => window.print(), 400);
+    const timer = setTimeout(() => window.print(), 500);
     return () => clearTimeout(timer);
   }, []);
+
+  async function handleSaveNote() {
+    setIsSavingNote(true);
+    try {
+      const res = await updateProductionOrderNoteAction(order.id, noteText);
+      if (res.status === "success") {
+        toast.success("Đã cập nhật ghi chú lệnh sản xuất.");
+      } else {
+        toast.error(res.message);
+      }
+    } catch {
+      toast.error("Không thể lưu ghi chú. Vui lòng thử lại.");
+    } finally {
+      setIsSavingNote(false);
+    }
+  }
 
   const outputQuantity = bom && bom.output_quantity > 0 ? bom.output_quantity : 1;
   const lines = (bom?.items ?? []).map((line) => ({
@@ -43,17 +63,61 @@ export function PrintOrderDocument({
 
   return (
     <div className="flex min-h-screen flex-col items-center bg-muted/40 py-6 print:min-h-0 print:bg-white print:py-0">
-      <div className="print-hide mb-4 flex w-[210mm] max-w-full items-center justify-between gap-2 px-1">
-        <p className="text-sm text-muted-foreground">
-          Bản in khổ A4 — đưa xuống xưởng sản xuất.
-        </p>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={() => window.print()}>
-            <PrinterIcon /> In lệnh
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => window.close()}>
-            <XIcon /> Đóng
-          </Button>
+      <div className="print-hide mb-4 flex w-[210mm] max-w-full flex-col gap-2.5 rounded-lg border bg-card p-3 shadow-md">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-bold text-foreground">
+              Bản in Lệnh sản xuất A4 — VƯỢNG PHÁT INK
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Bạn có thể sửa ghi chú bên dưới rồi bấm &ldquo;Lưu vào hệ thống&rdquo; hoặc bấm In trực tiếp.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => window.print()}>
+              <PrinterIcon className="size-4 mr-1" /> In lệnh
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => window.close()}>
+              <XIcon className="size-4 mr-1" /> Đóng
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 border-t pt-2">
+          <span className="text-xs font-bold uppercase shrink-0 text-muted-foreground flex items-center gap-1">
+            <Edit3Icon className="size-3.5 text-primary" />
+            Sửa Ghi chú:
+          </span>
+          <input
+            id="print-note-input"
+            type="text"
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            placeholder="VD: 170kg X 3 mẻ (Mẻ 1/3)..."
+            className="flex-1 min-w-[220px] rounded border px-3 py-1 text-sm font-bold bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs font-semibold"
+              onClick={() => setNoteText("170kg X 3 mẻ")}
+            >
+              170kg X 3 mẻ
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="h-8 text-xs font-semibold"
+              onClick={handleSaveNote}
+              disabled={isSavingNote}
+            >
+              <SaveIcon className="size-3.5 mr-1" />
+              {isSavingNote ? "Đang lưu…" : "Lưu vào hệ thống"}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -111,10 +175,21 @@ export function PrintOrderDocument({
             <span className="w-32 shrink-0 text-neutral-600">Hoàn thành lúc:</span>
             <span>{formatDateTime(order.completed_at)}</span>
           </div>
-          <div className="col-span-2 flex gap-2">
-            <span className="w-32 shrink-0 text-neutral-600">Ghi chú:</span>
-            <span>{order.note || "—"}</span>
-          </div>
+        </div>
+
+        {/* KHỐI GHI CHÚ PHÓNG TO VÀ IN ĐẬM */}
+        <div
+          className="print-note-box cursor-pointer"
+          title="Nhấp để chỉnh sửa nhanh ghi chú"
+          onClick={() => {
+            const input = document.getElementById("print-note-input");
+            input?.focus();
+          }}
+        >
+          <span className="print-note-label">GHI CHÚ:</span>
+          <span className="print-note-value">
+            {noteText || "—"}
+          </span>
         </div>
 
         {bom ? (

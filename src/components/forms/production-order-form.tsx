@@ -33,6 +33,7 @@ export function ProductionOrderDialog({
   const [open, setOpen] = useState(false);
   const [productId, setProductId] = useState("");
   const [totalQuantity, setTotalQuantity] = useState("");
+  const [note, setNote] = useState("");
   const [isSplit, setIsSplit] = useState(false);
   const [splitMode, setSplitMode] = useState<"bom" | "count" | "size">("bom");
   const [customBatchCount, setCustomBatchCount] = useState<number>(2);
@@ -55,6 +56,7 @@ export function ProductionOrderDialog({
   );
 
   const bomBatchSize = currentBom ? currentBom.output_quantity : null;
+  const unitLabel = selectedProduct?.unit || "kg";
 
   // Khi đổi sản phẩm, nếu có BOM thì mặc định đặt customBatchSize theo BOM
   useEffect(() => {
@@ -71,6 +73,8 @@ export function ProductionOrderDialog({
     const total = parseFloat(totalQuantity);
     if (!Number.isFinite(total) || total <= 0) return [];
 
+    const u = unitLabel.toLowerCase();
+
     if (!isSplit) {
       return [{ quantity: total, noteSuffix: "" }];
     }
@@ -84,13 +88,13 @@ export function ProductionOrderDialog({
       for (let i = 0; i < fullCount; i++) {
         list.push({
           quantity: bomBatchSize,
-          noteSuffix: `Mẻ ${i + 1}/${totalCount}`,
+          noteSuffix: `${formatQuantity(bomBatchSize)}${u} X ${totalCount} mẻ (Mẻ ${i + 1}/${totalCount})`,
         });
       }
       if (remainder > 0) {
         list.push({
           quantity: remainder,
-          noteSuffix: `Mẻ ${totalCount}/${totalCount}`,
+          noteSuffix: `${formatQuantity(remainder)}${u} X ${totalCount} mẻ (Mẻ ${totalCount}/${totalCount})`,
         });
       }
       return list;
@@ -108,13 +112,13 @@ export function ProductionOrderDialog({
       for (let i = 0; i < fullCount; i++) {
         list.push({
           quantity: size,
-          noteSuffix: `Mẻ ${i + 1}/${totalCount}`,
+          noteSuffix: `${formatQuantity(size)}${u} X ${totalCount} mẻ (Mẻ ${i + 1}/${totalCount})`,
         });
       }
       if (remainder > 0) {
         list.push({
           quantity: remainder,
-          noteSuffix: `Mẻ ${totalCount}/${totalCount}`,
+          noteSuffix: `${formatQuantity(remainder)}${u} X ${totalCount} mẻ (Mẻ ${totalCount}/${totalCount})`,
         });
       }
       return list;
@@ -129,20 +133,20 @@ export function ProductionOrderDialog({
       for (let i = 0; i < count - 1; i++) {
         list.push({
           quantity: equalSize,
-          noteSuffix: `Mẻ ${i + 1}/${count}`,
+          noteSuffix: `${formatQuantity(equalSize)}${u} X ${count} mẻ (Mẻ ${i + 1}/${count})`,
         });
         runningTotal += equalSize;
       }
       const lastSize = Math.round((total - runningTotal) * 1000) / 1000;
       list.push({
         quantity: lastSize,
-        noteSuffix: `Mẻ ${count}/${count}`,
+        noteSuffix: `${formatQuantity(lastSize)}${u} X ${count} mẻ (Mẻ ${count}/${count})`,
       });
       return list;
     }
 
     return [{ quantity: total, noteSuffix: "" }];
-  }, [totalQuantity, isSplit, splitMode, bomBatchSize, customBatchSize, customBatchCount]);
+  }, [totalQuantity, isSplit, splitMode, bomBatchSize, customBatchSize, customBatchCount, unitLabel]);
 
   useEffect(() => {
     if (state.status === "success") {
@@ -151,13 +155,12 @@ export function ProductionOrderDialog({
       formRef.current?.reset();
       setProductId("");
       setTotalQuantity("");
+      setNote("");
       setIsSplit(false);
     } else if (state.status === "error") {
       toast.error(state.message);
     }
   }, [state]);
-
-  const unitLabel = selectedProduct?.unit || "kg";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -403,14 +406,44 @@ export function ProductionOrderDialog({
 
           {/* Ghi chú */}
           <div className="space-y-1.5">
-            <Label htmlFor="order-note" className="text-xs font-semibold">
-              Ghi chú lệnh
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="order-note" className="text-xs font-semibold">
+                Ghi chú lệnh
+              </Label>
+              {totalQuantity && (
+                <div className="flex items-center gap-1.5 text-[11px]">
+                  {bomBatchSize && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNote(
+                          `${formatQuantity(bomBatchSize)}${unitLabel.toLowerCase()} X ${
+                            Math.ceil(parseFloat(totalQuantity) / bomBatchSize) || 1
+                          } mẻ`
+                        )
+                      }
+                      className="text-primary hover:underline font-semibold"
+                    >
+                      + {formatQuantity(bomBatchSize)}{unitLabel.toLowerCase()} X {Math.ceil(parseFloat(totalQuantity) / bomBatchSize) || 1} mẻ
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setNote(`${totalQuantity}${unitLabel.toLowerCase()} X 1 mẻ`)}
+                    className="text-neutral-500 hover:underline"
+                  >
+                    + {totalQuantity}{unitLabel.toLowerCase()} X 1 mẻ
+                  </button>
+                </div>
+              )}
+            </div>
             <Textarea
               id="order-note"
               name="note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
               rows={2}
-              placeholder="VD: Sản xuất theo đơn khách hàng A, ca sáng..."
+              placeholder="VD: 170kg X 3 mẻ, Sản xuất theo đơn khách hàng..."
               className="text-xs"
             />
           </div>

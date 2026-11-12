@@ -9,11 +9,13 @@ import {
   demoCreateOrder,
   demoDeleteBom,
   demoSaveBom,
+  demoUpdateOrderNote,
 } from "@/lib/demo/store";
 import { errorState, type FormState } from "@/lib/form-state";
 import { parseNumber, todayISO } from "@/lib/format";
 import { CAN_ACCESS } from "@/lib/labels";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isMissingTableError } from "@/lib/supabase/errors";
 import type { ItemType } from "@/lib/types";
 
@@ -320,6 +322,37 @@ export async function confirmProductionAction(
     return {
       status: "success",
       message: "Đã nghiệm thu hoàn thành lệnh sản xuất và cập nhật tồn kho.",
+    };
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function updateProductionOrderNoteAction(
+  orderId: string,
+  note: string,
+): Promise<FormState> {
+  try {
+    await requireProductionWrite();
+    if (!orderId) return { status: "error", message: "Lệnh sản xuất không hợp lệ." };
+
+    const trimmedNote = note.trim();
+
+    if (!isSupabaseConfigured()) {
+      demoUpdateOrderNote(orderId, trimmedNote || null);
+    } else {
+      const admin = createSupabaseAdminClient();
+      const { error } = await admin
+        .from("production_orders")
+        .update({ note: trimmedNote || null })
+        .eq("id", orderId);
+      if (error) throw new Error(error.message);
+    }
+
+    refreshSanXuat();
+    return {
+      status: "success",
+      message: "Đã cập nhật ghi chú lệnh sản xuất.",
     };
   } catch (error) {
     return errorState(error);

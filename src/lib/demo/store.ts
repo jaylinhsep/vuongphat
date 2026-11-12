@@ -1036,6 +1036,14 @@ export function demoCreateOrder(input: {
   });
 }
 
+export function demoUpdateOrderNote(orderId: string, note: string | null): void {
+  const state = db();
+  const order = state.orders.find((o) => o.id === orderId);
+  if (order) {
+    order.note = note ? note.trim() : null;
+  }
+}
+
 export function demoConfirmOrder(
   arg:
     | string
