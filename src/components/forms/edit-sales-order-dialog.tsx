@@ -157,8 +157,8 @@ export function EditSalesOrderDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50">
-          <PencilIcon className="size-3.5" /> Sửa
+        <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50 h-7.5 px-2 text-xs font-medium">
+          <PencilIcon className="size-3 mr-1" /> Sửa
         </Button>
       </DialogTrigger>
       <DialogContent className="w-[calc(100vw-1.5rem)] max-w-none sm:max-w-3xl lg:max-w-4xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">

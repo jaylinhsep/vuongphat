@@ -60,8 +60,8 @@ export function ConfirmSalesOrderButton({ order }: { order: SalesOrderRow }) {
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
-          <CheckCircleIcon className="size-4" /> Xuất kho giao
+        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white h-7.5 px-2.5 text-xs font-medium">
+          <CheckCircleIcon className="size-3.5 mr-1" /> Xuất kho
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -103,8 +103,8 @@ export function PaySalesOrderDialog({ order }: { order: SalesOrderRow }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="border-emerald-300 text-emerald-700 hover:bg-emerald-50">
-          <DollarSignIcon className="size-4" /> Thu tiền
+        <Button size="sm" variant="outline" className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 h-7.5 px-2 text-xs font-medium">
+          <DollarSignIcon className="size-3.5 mr-1" /> Thu tiền
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -199,7 +199,7 @@ export function CancelSalesOrderButton({ orderId }: { orderId: string }) {
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button size="icon" variant="ghost" className="size-8 text-neutral-500 hover:text-rose-600">
+        <Button size="icon" variant="ghost" className="size-7.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50" title="Hủy đơn hàng">
           <XCircleIcon className="size-4" />
         </Button>
       </AlertDialogTrigger>

@@ -302,17 +302,13 @@ export default async function BanHangPage({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-12 text-center">STT</TableHead>
-                      <TableHead className="w-32 font-mono">Mã đơn</TableHead>
-                      <TableHead className="w-28">Ngày đặt</TableHead>
-                      <TableHead>Khách hàng</TableHead>
+                      <TableHead className="w-10 text-center">STT</TableHead>
+                      <TableHead className="w-32">Đơn hàng</TableHead>
+                      <TableHead className="w-44">Khách hàng</TableHead>
                       <TableHead>Mặt hàng bán</TableHead>
-                      <TableHead className="text-right">Tổng tiền</TableHead>
-                      <TableHead className="text-right">Đã trả</TableHead>
-                      <TableHead className="w-32 text-center">Trạng thái giao</TableHead>
-                      <TableHead className="w-36 text-center">Thanh toán</TableHead>
-                      <TableHead className="w-28 text-center">In phiếu</TableHead>
-                      <TableHead className="w-48 text-right">Thao tác</TableHead>
+                      <TableHead className="w-36 text-right">Tiền hàng</TableHead>
+                      <TableHead className="w-32 text-center">Trạng thái</TableHead>
+                      <TableHead className="w-56 text-right">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -322,72 +318,82 @@ export default async function BanHangPage({
                         0,
                       );
                       return (
-                        <TableRow key={order.id}>
-                          <TableCell className="text-center font-mono text-xs text-neutral-500">
+                        <TableRow key={order.id} className="hover:bg-neutral-50/70">
+                          <TableCell className="text-center font-mono text-xs text-neutral-400 py-3">
                             {idx + 1}
                           </TableCell>
-                          <TableCell className="font-mono text-xs font-semibold">
-                            {order.code}
+                          <TableCell className="py-3 whitespace-nowrap">
+                            <span className="font-mono text-xs font-bold text-neutral-900 block">
+                              {order.code}
+                            </span>
+                            <span className="text-[11px] text-neutral-500 block mt-0.5">
+                              {formatDate(order.order_date)}
+                            </span>
                           </TableCell>
-                          <TableCell className="text-xs">
-                            {formatDate(order.order_date)}
-                          </TableCell>
-                          <TableCell>
-                            <p className="font-medium text-sm">
+                          <TableCell className="py-3">
+                            <p className="font-semibold text-xs text-neutral-900 leading-tight">
                               {order.customer_name}
                             </p>
                             {order.customer_phone && (
-                              <p className="text-xs text-neutral-500">
+                              <p className="text-[11px] text-neutral-500 font-mono mt-0.5">
                                 {order.customer_phone}
                               </p>
                             )}
                           </TableCell>
-                          <TableCell className="text-xs">
-                            {order.items.map((item) => (
-                              <div key={item.id} className="leading-tight">
-                                • {item.item_name}:{" "}
-                                <span className="font-semibold">
-                                  {item.quantity} {item.item_unit}
-                                </span>{" "}
-                                × {formatCurrency(item.unit_price)}
-                              </div>
-                            ))}
+                          <TableCell className="text-xs py-3">
+                            <div className="space-y-0.5">
+                              {order.items.map((item) => (
+                                <div key={item.id} className="leading-snug text-neutral-700">
+                                  <span className="font-medium">• {item.item_name}</span>:{" "}
+                                  <span className="font-bold font-mono text-neutral-900">
+                                    {item.quantity} {item.item_unit}
+                                  </span>{" "}
+                                  <span className="text-[11px] text-neutral-500 font-mono">
+                                    × {formatCurrency(item.unit_price)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           </TableCell>
-                          <TableCell className="text-right font-semibold text-sm">
-                            {formatCurrency(order.total_amount)}
+                          <TableCell className="text-right py-3 whitespace-nowrap">
+                            <div className="font-bold text-sm text-neutral-900 font-mono">
+                              {formatCurrency(order.total_amount)}
+                            </div>
+                            <div className="text-[11px] mt-0.5">
+                              {order.paid_amount >= order.total_amount ? (
+                                <span className="text-emerald-700 font-semibold">Đã trả đủ</span>
+                              ) : order.paid_amount > 0 ? (
+                                <div className="text-neutral-600 font-mono leading-tight">
+                                  <span>Đã trả: {formatCurrency(order.paid_amount)}</span>
+                                  <span className="text-rose-600 font-semibold block">
+                                    (nợ {formatCurrency(remaining)})
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-rose-600 font-medium">Chưa thanh toán</span>
+                              )}
+                            </div>
                           </TableCell>
-                          <TableCell className="text-right text-xs">
-                            <span
-                              className={
-                                order.paid_amount >= order.total_amount
-                                  ? "text-emerald-700 font-semibold"
-                                  : "text-neutral-700"
-                              }
-                            >
-                              {formatCurrency(order.paid_amount)}
-                            </span>
+                          <TableCell className="text-center py-3 whitespace-nowrap">
+                            <div className="flex flex-col items-center gap-1">
+                              <SalesOrderStatusBadge status={order.status} />
+                              <PaymentStatusBadge status={order.payment_status} />
+                            </div>
                           </TableCell>
-                          <TableCell className="text-center">
-                            <SalesOrderStatusBadge status={order.status} />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <PaymentStatusBadge status={order.payment_status} />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Button asChild size="sm" variant="outline" className="h-8 px-2 text-xs">
-                              <a
-                                href={`/ban-hang/in-phieu/${order.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="In phiếu xuất kho kiêm giao hàng (không hiện giá)"
-                              >
-                                <PrinterIcon className="h-3.5 w-3.5 mr-1" />
-                                In phiếu
-                              </a>
-                            </Button>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1.5">
+                          <TableCell className="text-right py-3 whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                              <Button asChild size="sm" variant="outline" className="h-7.5 px-2 text-xs">
+                                <a
+                                  href={`/ban-hang/in-phieu/${order.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="In phiếu xuất kho kiêm giao hàng"
+                                >
+                                  <PrinterIcon className="h-3.5 w-3.5 mr-1" />
+                                  In phiếu
+                                </a>
+                              </Button>
+
                               {isAdmin && order.status === "cho_xac_nhan" && (
                                 <EditSalesOrderDialog
                                   order={order}
@@ -395,12 +401,15 @@ export default async function BanHangPage({
                                   items={finishedProducts}
                                 />
                               )}
+
                               {order.status === "cho_xac_nhan" && (
                                 <ConfirmSalesOrderButton order={order} />
                               )}
+
                               {order.status !== "huy" && remaining > 0 && canWrite && (
                                 <PaySalesOrderDialog order={order} />
                               )}
+
                               {order.status === "cho_xac_nhan" && canWrite && (
                                 <CancelSalesOrderButton orderId={order.id} />
                               )}
