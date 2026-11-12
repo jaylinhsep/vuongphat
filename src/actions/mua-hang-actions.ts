@@ -13,6 +13,7 @@ import { errorState, type FormState } from "@/lib/form-state";
 import { parseNumber, todayISO } from "@/lib/format";
 import { CAN_ACCESS } from "@/lib/labels";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isMissingTableError } from "@/lib/supabase/errors";
 import type { PaymentMethod } from "@/lib/types";
 
 async function requireMuaHang() {
@@ -112,7 +113,20 @@ export async function createPurchaseOrderAction(
         .select("id")
         .single();
 
-      if (orderError) throw new Error(orderError.message);
+      if (orderError) {
+        if (isMissingTableError(orderError)) {
+          demoCreatePurchaseOrder({
+            supplierId,
+            orderDate,
+            deliveryDate,
+            note,
+            items,
+          });
+          refreshMuaHang();
+          return { status: "success", message: "Đã tạo đơn mua hàng thành công." };
+        }
+        throw new Error(orderError.message);
+      }
 
       const itemsPayload = items.map((line) => ({
         order_id: orderData.id,
@@ -126,7 +140,20 @@ export async function createPurchaseOrderAction(
         .from("purchase_order_items")
         .insert(itemsPayload);
 
-      if (itemsError) throw new Error(itemsError.message);
+      if (itemsError) {
+        if (isMissingTableError(itemsError)) {
+          demoCreatePurchaseOrder({
+            supplierId,
+            orderDate,
+            deliveryDate,
+            note,
+            items,
+          });
+          refreshMuaHang();
+          return { status: "success", message: "Đã tạo đơn mua hàng thành công." };
+        }
+        throw new Error(itemsError.message);
+      }
     }
 
     refreshMuaHang();
@@ -151,7 +178,13 @@ export async function confirmPurchaseOrderAction(
       const { error } = await supabase.rpc("confirm_purchase_order", {
         p_order_id: orderId,
       });
-      if (error) throw new Error(error.message);
+      if (error) {
+        if (isMissingTableError(error)) {
+          demoConfirmPurchaseOrder(orderId);
+        } else {
+          throw new Error(error.message);
+        }
+      }
     }
 
     refreshMuaHang();
@@ -191,7 +224,13 @@ export async function payPurchaseOrderAction(
         p_method: method,
         p_note: note || null,
       });
-      if (error) throw new Error(error.message);
+      if (error) {
+        if (isMissingTableError(error)) {
+          demoPayPurchaseOrder(orderId, amount, method, note);
+        } else {
+          throw new Error(error.message);
+        }
+      }
     }
 
     refreshMuaHang();
@@ -221,7 +260,13 @@ export async function cancelPurchaseOrderAction(
         .update({ status: "huy" })
         .eq("id", orderId)
         .eq("status", "cho_nhap_kho");
-      if (error) throw new Error(error.message);
+      if (error) {
+        if (isMissingTableError(error)) {
+          demoCancelPurchaseOrder(orderId);
+        } else {
+          throw new Error(error.message);
+        }
+      }
     }
 
     refreshMuaHang();

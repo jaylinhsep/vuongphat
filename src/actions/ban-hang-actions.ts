@@ -17,6 +17,7 @@ import { errorState, type FormState } from "@/lib/form-state";
 import { parseNumber, todayISO } from "@/lib/format";
 import { CAN_ACCESS } from "@/lib/labels";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isMissingTableError } from "@/lib/supabase/errors";
 import type { PaymentMethod } from "@/lib/types";
 
 async function requireBanHang() {
@@ -76,6 +77,11 @@ export async function createCustomerAction(
 
       const { error } = await supabase.from("customers").insert(payload);
       if (error) {
+        if (isMissingTableError(error)) {
+          demoCreateCustomer({ code, name, phone, address, note });
+          refreshBanHang();
+          return { status: "success", message: `Đã thêm khách hàng "${name}".` };
+        }
         if (error.message.includes("unique")) {
           return { status: "error", message: `Mã khách hàng "${code}" đã tồn tại.` };
         }
@@ -119,7 +125,14 @@ export async function updateCustomerAction(
           note: note || null,
         })
         .eq("id", id);
-      if (error) throw new Error(error.message);
+      if (error) {
+        if (isMissingTableError(error)) {
+          demoUpdateCustomer(id, { name, phone, address, note });
+          refreshBanHang();
+          return { status: "success", message: `Đã cập nhật khách hàng "${name}".` };
+        }
+        throw new Error(error.message);
+      }
     }
 
     refreshBanHang();
@@ -145,6 +158,11 @@ export async function deleteCustomerAction(
       const supabase = await createSupabaseServerClient();
       const { error } = await supabase.from("customers").delete().eq("id", id);
       if (error) {
+        if (isMissingTableError(error)) {
+          demoDeleteCustomer(id);
+          refreshBanHang();
+          return { status: "success", message: "Đã xóa khách hàng." };
+        }
         if (error.message.includes("foreign key") || error.message.includes("sales_orders")) {
           return { status: "error", message: "Không thể xóa khách hàng đã có đơn bán hàng." };
         }
@@ -231,7 +249,20 @@ export async function createSalesOrderAction(
         .select("id")
         .single();
 
-      if (orderError) throw new Error(orderError.message);
+      if (orderError) {
+        if (isMissingTableError(orderError)) {
+          demoCreateSalesOrder({
+            customerId,
+            orderDate,
+            deliveryDate,
+            note,
+            items,
+          });
+          refreshBanHang();
+          return { status: "success", message: "Đã tạo đơn bán hàng thành công." };
+        }
+        throw new Error(orderError.message);
+      }
 
       const itemsPayload = items.map((line) => ({
         order_id: orderData.id,
@@ -245,7 +276,20 @@ export async function createSalesOrderAction(
         .from("sales_order_items")
         .insert(itemsPayload);
 
-      if (itemsError) throw new Error(itemsError.message);
+      if (itemsError) {
+        if (isMissingTableError(itemsError)) {
+          demoCreateSalesOrder({
+            customerId,
+            orderDate,
+            deliveryDate,
+            note,
+            items,
+          });
+          refreshBanHang();
+          return { status: "success", message: "Đã tạo đơn bán hàng thành công." };
+        }
+        throw new Error(itemsError.message);
+      }
     }
 
     refreshBanHang();
@@ -332,7 +376,21 @@ export async function updateSalesOrderAction(
         })
         .eq("id", id);
 
-      if (orderError) throw new Error(orderError.message);
+      if (orderError) {
+        if (isMissingTableError(orderError)) {
+          demoUpdateSalesOrder({
+            id,
+            customerId,
+            orderDate,
+            deliveryDate,
+            note,
+            items,
+          });
+          refreshBanHang();
+          return { status: "success", message: "Đã cập nhật đơn bán hàng thành công." };
+        }
+        throw new Error(orderError.message);
+      }
 
       // Xóa items cũ và chèn items mới
       await supabase.from("sales_order_items").delete().eq("order_id", id);
@@ -374,7 +432,13 @@ export async function confirmSalesOrderAction(
       const { error } = await supabase.rpc("confirm_sales_order", {
         p_order_id: orderId,
       });
-      if (error) throw new Error(error.message);
+      if (error) {
+        if (isMissingTableError(error)) {
+          demoConfirmSalesOrder(orderId);
+        } else {
+          throw new Error(error.message);
+        }
+      }
     }
 
     refreshBanHang();
@@ -414,7 +478,13 @@ export async function paySalesOrderAction(
         p_method: method,
         p_note: note || null,
       });
-      if (error) throw new Error(error.message);
+      if (error) {
+        if (isMissingTableError(error)) {
+          demoPaySalesOrder(orderId, amount, method, note);
+        } else {
+          throw new Error(error.message);
+        }
+      }
     }
 
     refreshBanHang();
@@ -444,7 +514,13 @@ export async function cancelSalesOrderAction(
         .update({ status: "huy" })
         .eq("id", orderId)
         .eq("status", "cho_xac_nhan");
-      if (error) throw new Error(error.message);
+      if (error) {
+        if (isMissingTableError(error)) {
+          demoCancelSalesOrder(orderId);
+        } else {
+          throw new Error(error.message);
+        }
+      }
     }
 
     refreshBanHang();
