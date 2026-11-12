@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState } from "react";
 import { Loader2Icon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -44,7 +44,7 @@ export function ItemFormDialog({ item }: { item?: InventoryItem }) {
   const [unit, setUnit] = useState<string>(item?.unit ?? "kg");
   const formRef = useRef<HTMLFormElement>(null);
 
-  const getInitialSpecs = () => {
+  const getInitialSpecs = useCallback(() => {
     const parsed = parsePackingSpecs(
       item?.packing_spec,
       item?.pack_size,
@@ -52,7 +52,7 @@ export function ItemFormDialog({ item }: { item?: InventoryItem }) {
       item?.unit || "kg",
     );
     return parsed.length > 0 ? parsed : [{ pack_size: 0, pack_unit: "thùng", spec: "" }];
-  };
+  }, [item?.packing_spec, item?.pack_size, item?.pack_unit, item?.unit]);
 
   const [packingSpecs, setPackingSpecs] = useState<PackingSpecOption[]>(getInitialSpecs);
 
@@ -67,7 +67,7 @@ export function ItemFormDialog({ item }: { item?: InventoryItem }) {
       setUnit(item?.unit ?? "kg");
       setPackingSpecs(getInitialSpecs());
     }
-  }, [open, item]);
+  }, [open, item, getInitialSpecs]);
 
   useEffect(() => {
     if (state.status === "success") {
@@ -79,7 +79,7 @@ export function ItemFormDialog({ item }: { item?: InventoryItem }) {
     } else if (state.status === "error") {
       toast.error(state.message);
     }
-  }, [state, item]);
+  }, [state, item, getInitialSpecs]);
 
   const updateSpecField = (idx: number, field: keyof PackingSpecOption, val: string | number) => {
     setPackingSpecs((prev) => {

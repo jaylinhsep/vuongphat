@@ -24,7 +24,7 @@ function parsePackInfo(item: {
   packing_spec?: string | null;
   item_unit?: string;
 }) {
-  let raw = (item.packing_spec || "").trim();
+  const raw = (item.packing_spec || "").trim();
   let spec = "";
   let packSize = 0;
   let packUnit = item.pack_unit || "";
