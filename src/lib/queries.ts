@@ -85,7 +85,9 @@ type DbInventory = {
 export async function getInventory(search?: string): Promise<InventoryItem[]> {
   if (!isSupabaseConfigured()) return demoInventory(search);
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = isAdminConfigured()
+    ? createSupabaseAdminClient()
+    : await createSupabaseServerClient();
   let query = supabase.from("item_stock").select("*").order("name");
   const keyword = safeSearch(search);
   if (keyword) {
@@ -98,20 +100,36 @@ export async function getInventory(search?: string): Promise<InventoryItem[]> {
     throw new Error(error.message);
   }
 
-  return ((data ?? []) as unknown as DbInventory[]).map((row) => ({
-    id: row.id,
-    code: row.code,
-    name: row.name,
-    unit: row.unit,
-    type: row.type,
-    unit_price: num(row.unit_price),
-    min_stock: num(row.min_stock),
-    packing_spec: row.packing_spec ?? null,
-    pack_size: row.pack_size ? num(row.pack_size) : null,
-    pack_unit: row.pack_unit ?? null,
-    created_at: row.created_at,
-    on_hand: num(row.on_hand),
-  }));
+  // Bổ sung các cột quy cách đóng gói (packing_spec, pack_size, pack_unit) từ bảng items
+  // phòng trường hợp view database item_stock chưa kịp cập nhật các cột này
+  const { data: itemSpecs } = await supabase
+    .from("items")
+    .select("id, packing_spec, pack_size, pack_unit");
+  const specMap = new Map(
+    ((itemSpecs as unknown as DbInventory[]) ?? []).map((i) => [i.id, i]),
+  );
+
+  return ((data ?? []) as unknown as DbInventory[]).map((row) => {
+    const spec = specMap.get(row.id);
+    return {
+      id: row.id,
+      code: row.code,
+      name: row.name,
+      unit: row.unit,
+      type: row.type,
+      unit_price: num(row.unit_price),
+      min_stock: num(row.min_stock),
+      packing_spec: row.packing_spec ?? spec?.packing_spec ?? null,
+      pack_size: row.pack_size
+        ? num(row.pack_size)
+        : spec?.pack_size
+          ? num(spec.pack_size)
+          : null,
+      pack_unit: row.pack_unit ?? spec?.pack_unit ?? null,
+      created_at: row.created_at,
+      on_hand: num(row.on_hand),
+    };
+  });
 }
 
 export async function getItems(type?: ItemType): Promise<Item[]> {

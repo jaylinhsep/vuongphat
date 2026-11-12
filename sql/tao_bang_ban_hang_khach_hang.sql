@@ -21,6 +21,26 @@ alter table public.items add column if not exists packing_spec text;
 alter table public.items add column if not exists pack_size numeric(14, 3);
 alter table public.items add column if not exists pack_unit text;
 
+-- Cập nhật view tồn kho item_stock bao gồm cả quy cách đóng gói
+create or replace view public.item_stock
+with (security_invoker = true) as
+select
+  i.id,
+  i.code,
+  i.name,
+  i.unit,
+  i.type,
+  i.unit_price,
+  i.min_stock,
+  i.packing_spec,
+  i.pack_size,
+  i.pack_unit,
+  i.created_at,
+  coalesce(sum(m.quantity), 0)::numeric(14, 3) as on_hand
+from public.items i
+left join public.stock_movements m on m.item_id = i.id
+group by i.id;
+
 -- 2. Bảng khách hàng (Customers)
 create table if not exists public.customers (
   id uuid primary key default gen_random_uuid(),
