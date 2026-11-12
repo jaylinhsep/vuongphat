@@ -1,13 +1,18 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { Loader2Icon, PencilIcon, PlusIcon } from "lucide-react";
+import { Loader2Icon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import {
   createItemAction,
   createSupplierAction,
   updateItemAction,
 } from "@/actions/kho-actions";
+import {
+  buildSpecDescription,
+  parsePackingSpecs,
+  type PackingSpecOption,
+} from "@/lib/packing-specs";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,11 +41,33 @@ import type { InventoryItem, ItemType } from "@/lib/types";
 export function ItemFormDialog({ item }: { item?: InventoryItem }) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<ItemType>(item?.type ?? "nguyen_lieu");
+  const [unit, setUnit] = useState<string>(item?.unit ?? "kg");
   const formRef = useRef<HTMLFormElement>(null);
+
+  const getInitialSpecs = () => {
+    const parsed = parsePackingSpecs(
+      item?.packing_spec,
+      item?.pack_size,
+      item?.pack_unit,
+      item?.unit || "kg",
+    );
+    return parsed.length > 0 ? parsed : [{ pack_size: 0, pack_unit: "thùng", spec: "" }];
+  };
+
+  const [packingSpecs, setPackingSpecs] = useState<PackingSpecOption[]>(getInitialSpecs);
+
   const [state, formAction, pending] = useActionState(
     item ? updateItemAction : createItemAction,
     initialFormState,
   );
+
+  useEffect(() => {
+    if (open) {
+      setType(item?.type ?? "nguyen_lieu");
+      setUnit(item?.unit ?? "kg");
+      setPackingSpecs(getInitialSpecs());
+    }
+  }, [open, item]);
 
   useEffect(() => {
     if (state.status === "success") {
@@ -48,10 +75,38 @@ export function ItemFormDialog({ item }: { item?: InventoryItem }) {
       setOpen(false);
       formRef.current?.reset();
       setType(item?.type ?? "nguyen_lieu");
+      setPackingSpecs(getInitialSpecs());
     } else if (state.status === "error") {
       toast.error(state.message);
     }
   }, [state, item]);
+
+  const updateSpecField = (idx: number, field: keyof PackingSpecOption, val: string | number) => {
+    setPackingSpecs((prev) => {
+      const next = [...prev];
+      const cur = { ...next[idx], [field]: val };
+      if (field === "pack_size" || field === "pack_unit") {
+        const sizeNum = field === "pack_size" ? (parseFloat(String(val)) || 0) : cur.pack_size;
+        const unitStr = field === "pack_unit" ? String(val) : cur.pack_unit;
+        cur.spec = buildSpecDescription(sizeNum, unitStr, unit || "kg");
+      }
+      next[idx] = cur;
+      return next;
+    });
+  };
+
+  const addSpecRow = () => {
+    if (packingSpecs.length >= 3) return;
+    setPackingSpecs((prev) => [
+      ...prev,
+      { pack_size: 0, pack_unit: prev[0]?.pack_unit || "thùng", spec: "" },
+    ]);
+  };
+
+  const removeSpecRow = (idx: number) => {
+    if (packingSpecs.length <= 1) return;
+    setPackingSpecs((prev) => prev.filter((_, i) => i !== idx));
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -71,7 +126,7 @@ export function ItemFormDialog({ item }: { item?: InventoryItem }) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{item ? "Sửa hàng hóa" : "Thêm hàng hóa"}</DialogTitle>
           <DialogDescription>
@@ -99,7 +154,8 @@ export function ItemFormDialog({ item }: { item?: InventoryItem }) {
                 id="item-unit"
                 name="unit"
                 placeholder="kg, lít, cái…"
-                defaultValue={item?.unit}
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
                 required
               />
             </div>
@@ -191,59 +247,121 @@ export function ItemFormDialog({ item }: { item?: InventoryItem }) {
               />
             </div>
 
-            {/* Quy cách đóng gói */}
-            <div className="space-y-2 sm:col-span-2 rounded-lg border border-neutral-200 bg-neutral-50/80 p-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold text-neutral-900">
-                  Quy cách đóng gói (Áp dụng khi xuất phiếu bán hàng)
-                </Label>
-                <span className="text-[11px] text-muted-foreground">
-                  Ví dụ: 17kg/thùng, 15kg/thùng
-                </span>
+            {/* Quy cách đóng gói đa lựa chọn (1 đến 3 lựa chọn) */}
+            <div className="space-y-3 sm:col-span-2 rounded-lg border border-neutral-200 bg-neutral-50/80 p-3 sm:p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <Label className="text-xs font-semibold text-neutral-900 block">
+                    Quy cách đóng gói ({packingSpecs.length}/3 lựa chọn)
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Có thể thêm 2-3 quy cách để linh hoạt chọn khi lên đơn bán hàng (VD: 170kg/phuy, 20kg/thùng, 15kg/thùng)
+                  </p>
+                </div>
+                {packingSpecs.length < 3 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addSpecRow}
+                    className="h-7 text-xs bg-white text-blue-700 hover:text-blue-800 border-blue-200 hover:bg-blue-50 shrink-0"
+                  >
+                    <PlusIcon className="size-3.5 mr-1" /> Thêm quy cách
+                  </Button>
+                )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-                <div className="space-y-1">
-                  <Label htmlFor="item-pack-size" className="text-[11px] text-muted-foreground">
-                    Số lượng / kiện ({item?.unit || "kg"})
-                  </Label>
-                  <Input
-                    id="item-pack-size"
-                    name="pack_size"
-                    type="number"
-                    step="any"
-                    min={0.001}
-                    placeholder="VD: 17 hoặc 15"
-                    defaultValue={item?.pack_size ?? ""}
-                    className="h-8 text-xs bg-white"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="item-pack-unit" className="text-[11px] text-muted-foreground">
-                    Đơn vị bao bì
-                  </Label>
-                  <Input
-                    id="item-pack-unit"
-                    name="pack_unit"
-                    placeholder="VD: thùng, can, phuy"
-                    defaultValue={item?.pack_unit ?? "thùng"}
-                    className="h-8 text-xs bg-white"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="item-packing-spec" className="text-[11px] text-muted-foreground">
-                    Mô tả quy cách hiển thị
-                  </Label>
-                  <Input
-                    id="item-packing-spec"
-                    name="packing_spec"
-                    placeholder="VD: 17kg/thùng"
-                    defaultValue={item?.packing_spec ?? ""}
-                    className="h-8 text-xs bg-white"
-                  />
-                </div>
+
+              {/* Dữ liệu gửi lên server */}
+              <input
+                type="hidden"
+                name="packing_specs_json"
+                value={JSON.stringify(packingSpecs)}
+              />
+              <input
+                type="hidden"
+                name="pack_size"
+                value={packingSpecs[0]?.pack_size || ""}
+              />
+              <input
+                type="hidden"
+                name="pack_unit"
+                value={packingSpecs[0]?.pack_unit || ""}
+              />
+              <input
+                type="hidden"
+                name="packing_spec"
+                value={packingSpecs[0]?.spec || ""}
+              />
+
+              <div className="space-y-2.5">
+                {packingSpecs.map((spec, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-md border border-neutral-200 bg-white p-2.5 space-y-1.5 shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-neutral-700">
+                      <span className="flex items-center gap-1.5">
+                        <span className="inline-flex size-4 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-[10px]">
+                          {idx + 1}
+                        </span>
+                        {idx === 0 ? "Quy cách chính (Mặc định)" : `Quy cách phụ ${idx + 1}`}
+                      </span>
+                      {packingSpecs.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeSpecRow(idx)}
+                          className="text-neutral-400 hover:text-rose-600 p-0.5 rounded transition-colors"
+                          title="Xóa quy cách này"
+                        >
+                          <Trash2Icon className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">
+                          Số lượng / kiện ({unit || "kg"})
+                        </Label>
+                        <Input
+                          type="number"
+                          step="any"
+                          min={0.001}
+                          placeholder="VD: 170"
+                          value={spec.pack_size || ""}
+                          onChange={(e) => updateSpecField(idx, "pack_size", e.target.value)}
+                          className="h-8 text-xs bg-neutral-50/50"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">
+                          Đơn vị bao bì
+                        </Label>
+                        <Input
+                          placeholder="VD: phuy, thùng, can"
+                          value={spec.pack_unit}
+                          onChange={(e) => updateSpecField(idx, "pack_unit", e.target.value)}
+                          className="h-8 text-xs bg-neutral-50/50"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">
+                          Mô tả quy cách hiển thị
+                        </Label>
+                        <Input
+                          placeholder="VD: 170KG/phuy"
+                          value={spec.spec}
+                          onChange={(e) => updateSpecField(idx, "spec", e.target.value)}
+                          className="h-8 text-xs bg-neutral-50/50"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
+
               <p className="text-[11px] text-neutral-500 italic">
-                * Khi xuất phiếu bán hàng, hệ thống sẽ tự động tính số lượng thùng/kiện và in rõ quy cách đóng gói lên phiếu giao hàng.
+                * Khi xuất phiếu bán hàng, hệ thống sẽ tự động hiển thị các lựa chọn quy cách trên và tính đúng số lượng kiện theo quy cách đã chọn.
               </p>
             </div>
           </div>

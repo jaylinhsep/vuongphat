@@ -293,6 +293,7 @@ export type SalesOrderItem = {
   unit_price: number;
   total_price: number;
   commercial_name?: string | null;
+  packing_spec?: string | null;
 };
 
 export type SalesOrderItemRow = SalesOrderItem & {

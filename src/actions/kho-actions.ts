@@ -19,6 +19,7 @@ import {
 } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isMissingTableError } from "@/lib/supabase/errors";
+import { formatPackingSpecsForSave } from "@/lib/packing-specs";
 import type { ItemType, MovementType } from "@/lib/types";
 
 async function requireKhoWrite() {
@@ -145,14 +146,35 @@ export async function createItemAction(
     const unitPrice = parseNumber(formData.get("unit_price"));
     const minStock = parseNumber(formData.get("min_stock"));
     const commercialName = String(formData.get("commercial_name") ?? "").trim() || null;
-    const rawPackingSpec = String(formData.get("packing_spec") ?? "").trim();
-    const packSize = parseNumber(formData.get("pack_size"));
-    const packUnit = String(formData.get("pack_unit") ?? "").trim() || "thùng";
-    const packingSpec =
-      rawPackingSpec ||
-      (Number.isFinite(packSize) && packSize > 0
-        ? `${packSize}${unit}/${packUnit}`
-        : null);
+    const packingSpecsJson = String(formData.get("packing_specs_json") ?? "").trim();
+    let packingSpec: string | null = null;
+    let packSize: number | null = null;
+    let packUnit: string | null = null;
+
+    if (packingSpecsJson) {
+      try {
+        const parsed = JSON.parse(packingSpecsJson);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const formatted = formatPackingSpecsForSave(parsed, unit);
+          packingSpec = formatted.packing_spec;
+          packSize = formatted.pack_size;
+          packUnit = formatted.pack_unit;
+        }
+      } catch {
+        // Fallback sang parse trường thường
+      }
+    }
+
+    if (!packingSpec && !packSize) {
+      const rawPackingSpec = String(formData.get("packing_spec") ?? "").trim();
+      const legacyPackSize = parseNumber(formData.get("pack_size"));
+      const legacyPackUnit = String(formData.get("pack_unit") ?? "").trim() || "thùng";
+      packSize = Number.isFinite(legacyPackSize) && legacyPackSize > 0 ? legacyPackSize : null;
+      packUnit = packSize ? legacyPackUnit : null;
+      packingSpec =
+        rawPackingSpec ||
+        (packSize && packSize > 0 ? `${packSize}${unit}/${packUnit}` : null);
+    }
 
     if (!code || !name || !unit) {
       return { status: "error", message: "Nhập đầy đủ mã, tên và đơn vị tính." };
@@ -173,8 +195,8 @@ export async function createItemAction(
       minStock: Number.isFinite(minStock) ? minStock : 0,
       commercialName,
       packingSpec,
-      packSize: Number.isFinite(packSize) && packSize > 0 ? packSize : null,
-      packUnit: Number.isFinite(packSize) && packSize > 0 ? packUnit : null,
+      packSize: typeof packSize === "number" && packSize > 0 ? packSize : null,
+      packUnit: typeof packSize === "number" && packSize > 0 ? packUnit : null,
       onHand: stock.value,
     };
 
@@ -254,14 +276,35 @@ export async function updateItemAction(
     const unitPrice = parseNumber(formData.get("unit_price"));
     const minStock = parseNumber(formData.get("min_stock"));
     const commercialName = String(formData.get("commercial_name") ?? "").trim() || null;
-    const rawPackingSpec = String(formData.get("packing_spec") ?? "").trim();
-    const packSize = parseNumber(formData.get("pack_size"));
-    const packUnit = String(formData.get("pack_unit") ?? "").trim() || "thùng";
-    const packingSpec =
-      rawPackingSpec ||
-      (Number.isFinite(packSize) && packSize > 0
-        ? `${packSize}${unit}/${packUnit}`
-        : null);
+    const packingSpecsJson = String(formData.get("packing_specs_json") ?? "").trim();
+    let packingSpec: string | null = null;
+    let packSize: number | null = null;
+    let packUnit: string | null = null;
+
+    if (packingSpecsJson) {
+      try {
+        const parsed = JSON.parse(packingSpecsJson);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const formatted = formatPackingSpecsForSave(parsed, unit);
+          packingSpec = formatted.packing_spec;
+          packSize = formatted.pack_size;
+          packUnit = formatted.pack_unit;
+        }
+      } catch {
+        // Fallback sang parse trường thường
+      }
+    }
+
+    if (!packingSpec && !packSize) {
+      const rawPackingSpec = String(formData.get("packing_spec") ?? "").trim();
+      const legacyPackSize = parseNumber(formData.get("pack_size"));
+      const legacyPackUnit = String(formData.get("pack_unit") ?? "").trim() || "thùng";
+      packSize = Number.isFinite(legacyPackSize) && legacyPackSize > 0 ? legacyPackSize : null;
+      packUnit = packSize ? legacyPackUnit : null;
+      packingSpec =
+        rawPackingSpec ||
+        (packSize && packSize > 0 ? `${packSize}${unit}/${packUnit}` : null);
+    }
 
     if (!id) return { status: "error", message: "Thiếu mã hàng hóa cần sửa." };
     if (!code || !name || !unit) {
@@ -284,8 +327,8 @@ export async function updateItemAction(
       minStock: Number.isFinite(minStock) ? minStock : 0,
       commercialName,
       packingSpec,
-      packSize: Number.isFinite(packSize) && packSize > 0 ? packSize : null,
-      packUnit: Number.isFinite(packSize) && packSize > 0 ? packUnit : null,
+      packSize: typeof packSize === "number" && packSize > 0 ? packSize : null,
+      packUnit: typeof packSize === "number" && packSize > 0 ? packUnit : null,
       onHand: stock.value,
     };
 

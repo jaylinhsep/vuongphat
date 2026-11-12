@@ -26,12 +26,14 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency, todayISO } from "@/lib/format";
 import { INITIAL_FORM_STATE, type FormState } from "@/lib/form-state";
+import { parsePackingSpecs } from "@/lib/packing-specs";
 import type { Customer, InventoryItem } from "@/lib/types";
 
 type OrderLine = {
   id: string;
   itemId: string;
   commercialName: string;
+  packingSpec: string;
   quantity: string;
   unitPrice: string;
 };
@@ -45,13 +47,13 @@ export function CreateSalesOrderDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [lines, setLines] = useState<OrderLine[]>([
-    { id: "line-1", itemId: "", commercialName: "", quantity: "1", unitPrice: "0" },
+    { id: "line-1", itemId: "", commercialName: "", packingSpec: "", quantity: "1", unitPrice: "0" },
   ]);
 
   const addLine = () => {
     setLines((prev) => [
       ...prev,
-      { id: `line-${Date.now()}`, itemId: "", commercialName: "", quantity: "1", unitPrice: "0" },
+      { id: `line-${Date.now()}`, itemId: "", commercialName: "", packingSpec: "", quantity: "1", unitPrice: "0" },
     ]);
   };
 
@@ -61,6 +63,11 @@ export function CreateSalesOrderDialog({
 
   const updateItem = (id: string, itemId: string) => {
     const selected = items.find((i) => i.id === itemId);
+    const specs = selected
+      ? parsePackingSpecs(selected.packing_spec, selected.pack_size, selected.pack_unit, selected.unit)
+      : [];
+    const defaultSpec = specs.length > 0 ? specs[0].spec : (selected?.packing_spec || "");
+
     setLines((prev) =>
       prev.map((l) =>
         l.id === id
@@ -68,10 +75,17 @@ export function CreateSalesOrderDialog({
               ...l,
               itemId,
               commercialName: selected ? (selected.commercial_name || selected.name) : "",
+              packingSpec: defaultSpec,
               unitPrice: selected ? String(selected.unit_price) : l.unitPrice,
             }
           : l,
       ),
+    );
+  };
+
+  const updatePackingSpec = (id: string, value: string) => {
+    setLines((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, packingSpec: value } : l)),
     );
   };
 
@@ -106,6 +120,7 @@ export function CreateSalesOrderDialog({
         .map((l) => ({
           itemId: l.itemId,
           commercialName: l.commercialName.trim() || undefined,
+          packingSpec: l.packingSpec.trim() || undefined,
           quantity: parseFloat(l.quantity) || 0,
           unitPrice: Math.max(parseFloat(l.unitPrice) || 0, 0),
         }));
@@ -121,7 +136,7 @@ export function CreateSalesOrderDialog({
       const res = await createSalesOrderAction(prev, data);
       if (res.status === "success") {
         setOpen(false);
-        setLines([{ id: "line-1", itemId: "", commercialName: "", quantity: "1", unitPrice: "0" }]);
+        setLines([{ id: "line-1", itemId: "", commercialName: "", packingSpec: "", quantity: "1", unitPrice: "0" }]);
       }
       return res;
     },
@@ -202,6 +217,14 @@ export function CreateSalesOrderDialog({
             <div className="space-y-2.5 sm:hidden">
               {lines.map((line, idx) => {
                 const selectedItem = items.find((i) => i.id === line.itemId);
+                const availableSpecs = selectedItem
+                  ? parsePackingSpecs(
+                      selectedItem.packing_spec,
+                      selectedItem.pack_size,
+                      selectedItem.pack_unit,
+                      selectedItem.unit,
+                    )
+                  : [];
                 const numQty = parseFloat(line.quantity) || 0;
                 const numPrice = parseFloat(line.unitPrice) || 0;
                 const lineTotal = numQty * numPrice;
@@ -234,11 +257,36 @@ export function CreateSalesOrderDialog({
                             />
                           </div>
                         )}
-                        {selectedItem?.packing_spec && (
-                          <div className="text-[11px] text-blue-600 font-medium">
-                            📦 Quy cách: {selectedItem.packing_spec}
+                        {availableSpecs.length > 1 ? (
+                          <div className="space-y-1 pt-0.5">
+                            <span className="text-[10px] font-semibold text-blue-700">
+                              📦 Chọn quy cách ({availableSpecs.length}):
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {availableSpecs.map((specOpt) => {
+                                const isSelected = (line.packingSpec || availableSpecs[0]?.spec) === specOpt.spec;
+                                return (
+                                  <button
+                                    key={specOpt.spec}
+                                    type="button"
+                                    onClick={() => updatePackingSpec(line.id, specOpt.spec)}
+                                    className={`px-2 py-0.5 rounded text-[11px] font-semibold border transition-all cursor-pointer ${
+                                      isSelected
+                                        ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                                        : "bg-white text-neutral-700 border-neutral-300 hover:border-blue-400 hover:bg-blue-50/50"
+                                    }`}
+                                  >
+                                    {specOpt.spec}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
-                        )}
+                        ) : availableSpecs.length === 1 ? (
+                          <div className="text-[11px] text-blue-600 font-medium">
+                            📦 Quy cách: {availableSpecs[0].spec}
+                          </div>
+                        ) : null}
                       </div>
                       {lines.length > 1 && (
                         <Button
@@ -311,6 +359,14 @@ export function CreateSalesOrderDialog({
               <div className="max-h-72 divide-y overflow-y-auto">
                 {lines.map((line, idx) => {
                   const selectedItem = items.find((i) => i.id === line.itemId);
+                  const availableSpecs = selectedItem
+                    ? parsePackingSpecs(
+                        selectedItem.packing_spec,
+                        selectedItem.pack_size,
+                        selectedItem.pack_unit,
+                        selectedItem.unit,
+                      )
+                    : [];
                   const numQty = parseFloat(line.quantity) || 0;
                   const numPrice = parseFloat(line.unitPrice) || 0;
                   const lineTotal = numQty * numPrice;
@@ -343,11 +399,36 @@ export function CreateSalesOrderDialog({
                             />
                           </div>
                         )}
-                        {selectedItem?.packing_spec && (
-                          <div className="text-[10px] text-blue-600 font-medium">
-                            📦 Quy cách: {selectedItem.packing_spec}
+                        {availableSpecs.length > 1 ? (
+                          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                            <span className="text-[10px] font-semibold text-blue-700 shrink-0">
+                              📦 Chọn quy cách ({availableSpecs.length}):
+                            </span>
+                            <div className="inline-flex flex-wrap gap-1">
+                              {availableSpecs.map((specOpt) => {
+                                const isSelected = (line.packingSpec || availableSpecs[0]?.spec) === specOpt.spec;
+                                return (
+                                  <button
+                                    key={specOpt.spec}
+                                    type="button"
+                                    onClick={() => updatePackingSpec(line.id, specOpt.spec)}
+                                    className={`px-2 py-0.5 rounded text-[11px] font-semibold border transition-all cursor-pointer ${
+                                      isSelected
+                                        ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                                        : "bg-white text-neutral-700 border-neutral-300 hover:border-blue-400 hover:bg-blue-50/50"
+                                    }`}
+                                  >
+                                    {specOpt.spec}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
-                        )}
+                        ) : availableSpecs.length === 1 ? (
+                          <div className="text-[10px] text-blue-600 font-medium pt-0.5">
+                            📦 Quy cách: {availableSpecs[0].spec}
+                          </div>
+                        ) : null}
                       </div>
 
                       <div className="w-24">

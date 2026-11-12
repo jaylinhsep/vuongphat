@@ -24,17 +24,42 @@ function parsePackInfo(item: {
   packing_spec?: string | null;
   item_unit?: string;
 }) {
-  let packSize = item.pack_size && item.pack_size > 0 ? item.pack_size : 0;
+  let raw = (item.packing_spec || "").trim();
+  let spec = "";
+  let packSize = 0;
   let packUnit = item.pack_unit || "";
-  let spec = (item.packing_spec || "").toUpperCase().trim();
 
-  // Trích xuất số kg từ packing_spec nếu chưa có packSize
-  if (!packSize && spec) {
+  // Nếu là JSON array lưu nhiều quy cách, lấy quy cách đầu tiên
+  if (raw.startsWith("[") && raw.endsWith("]")) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const first = parsed[0];
+        spec = String(first.spec || "").toUpperCase().trim();
+        const pSize = parseFloat(String(first.pack_size));
+        if (Number.isFinite(pSize) && pSize > 0) packSize = pSize;
+        if (first.pack_unit) packUnit = String(first.pack_unit);
+      }
+    } catch {
+      // Bỏ qua lỗi parse
+    }
+  }
+
+  if (!spec) {
+    spec = raw.toUpperCase().trim();
+  }
+
+  // Trích xuất số kg từ spec
+  if (spec) {
     const match = spec.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|k|g)?/i);
     if (match) {
       const val = parseFloat(match[1].replace(",", "."));
       if (Number.isFinite(val) && val > 0) packSize = val;
     }
+  }
+
+  if (!packSize && item.pack_size && item.pack_size > 0) {
+    packSize = item.pack_size;
   }
 
   // Nhận diện đơn vị đóng gói (P = Phuy/Phi, T = Thùng, C = Can)

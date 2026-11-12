@@ -709,6 +709,7 @@ type DbSalesOrderItem = {
   unit_price: number | string;
   total_price: number | string;
   commercial_name?: string | null;
+  packing_spec?: string | null;
   item: {
     name: string;
     code: string;
@@ -792,7 +793,7 @@ export async function getSalesOrders(
       item_code: i.item?.code ?? "—",
       item_unit: i.item?.unit ?? "—",
       commercial_name: i.commercial_name || i.item?.commercial_name || null,
-      packing_spec: i.item?.packing_spec ?? null,
+      packing_spec: i.packing_spec || i.item?.packing_spec || null,
       pack_size: i.item?.pack_size ? num(i.item.pack_size) : null,
       pack_unit: i.item?.pack_unit ?? null,
     })),
@@ -849,7 +850,7 @@ export async function getSalesOrder(id: string): Promise<SalesOrderRow | null> {
       item_code: i.item?.code ?? "—",
       item_unit: i.item?.unit ?? "—",
       commercial_name: i.commercial_name || i.item?.commercial_name || null,
-      packing_spec: i.item?.packing_spec ?? null,
+      packing_spec: i.packing_spec || i.item?.packing_spec || null,
       pack_size: i.item?.pack_size ? num(i.item.pack_size) : null,
       pack_unit: i.item?.pack_unit ?? null,
     })),

@@ -201,7 +201,7 @@ export async function createSalesOrderAction(
     const deliveryDate = String(formData.get("delivery_date") ?? "") || null;
     const note = String(formData.get("note") ?? "").trim();
 
-    let items: { itemId: string; quantity: number; unitPrice: number; commercialName?: string }[] = [];
+    let items: { itemId: string; quantity: number; unitPrice: number; commercialName?: string; packingSpec?: string }[] = [];
     try {
       const raw = JSON.parse(String(formData.get("items") ?? "[]")) as unknown;
       if (Array.isArray(raw)) {
@@ -212,12 +212,14 @@ export async function createSalesOrderAction(
               quantity?: unknown;
               unitPrice?: unknown;
               commercialName?: unknown;
+              packingSpec?: unknown;
             };
             return {
               itemId: String(entry.itemId ?? ""),
               quantity: Number(entry.quantity),
               unitPrice: Number(entry.unitPrice),
               commercialName: String(entry.commercialName ?? "").trim() || undefined,
+              packingSpec: String(entry.packingSpec ?? "").trim() || undefined,
             };
           })
           .filter(
@@ -286,6 +288,7 @@ export async function createSalesOrderAction(
         order_id: orderData.id,
         item_id: line.itemId,
         commercial_name: line.commercialName || null,
+        packing_spec: line.packingSpec || null,
         quantity: line.quantity,
         unit_price: line.unitPrice,
         total_price: line.quantity * line.unitPrice,
@@ -295,8 +298,13 @@ export async function createSalesOrderAction(
         .from("sales_order_items")
         .insert(itemsPayload);
 
-      if (itemsError && itemsError.message.includes("commercial_name")) {
-        const fallbackPayload = itemsPayload.map(({ commercial_name, ...rest }) => rest);
+      if (itemsError && (itemsError.message.includes("packing_spec") || itemsError.message.includes("commercial_name") || itemsError.message.includes("column"))) {
+        const fallbackPayload = itemsPayload.map((row) => {
+          const r: Record<string, unknown> = { ...row };
+          if (itemsError?.message.includes("packing_spec")) delete r.packing_spec;
+          if (itemsError?.message.includes("commercial_name")) delete r.commercial_name;
+          return r;
+        });
         const retry = await supabase.from("sales_order_items").insert(fallbackPayload);
         itemsError = retry.error;
       }
@@ -341,7 +349,7 @@ export async function updateSalesOrderAction(
     const deliveryDate = String(formData.get("delivery_date") ?? "") || null;
     const note = String(formData.get("note") ?? "").trim();
 
-    let items: { itemId: string; quantity: number; unitPrice: number; commercialName?: string }[] = [];
+    let items: { itemId: string; quantity: number; unitPrice: number; commercialName?: string; packingSpec?: string }[] = [];
     try {
       const raw = JSON.parse(String(formData.get("items") ?? "[]")) as unknown;
       if (Array.isArray(raw)) {
@@ -352,12 +360,14 @@ export async function updateSalesOrderAction(
               quantity?: unknown;
               unitPrice?: unknown;
               commercialName?: unknown;
+              packingSpec?: unknown;
             };
             return {
               itemId: String(entry.itemId ?? ""),
               quantity: Number(entry.quantity),
               unitPrice: Number(entry.unitPrice),
               commercialName: String(entry.commercialName ?? "").trim() || undefined,
+              packingSpec: String(entry.packingSpec ?? "").trim() || undefined,
             };
           })
           .filter(
@@ -430,6 +440,7 @@ export async function updateSalesOrderAction(
         order_id: id,
         item_id: line.itemId,
         commercial_name: line.commercialName || null,
+        packing_spec: line.packingSpec || null,
         quantity: line.quantity,
         unit_price: line.unitPrice,
         total_price: line.quantity * line.unitPrice,
@@ -439,8 +450,13 @@ export async function updateSalesOrderAction(
         .from("sales_order_items")
         .insert(itemsPayload);
 
-      if (itemsError && itemsError.message.includes("commercial_name")) {
-        const fallbackPayload = itemsPayload.map(({ commercial_name, ...rest }) => rest);
+      if (itemsError && (itemsError.message.includes("packing_spec") || itemsError.message.includes("commercial_name") || itemsError.message.includes("column"))) {
+        const fallbackPayload = itemsPayload.map((row) => {
+          const r: Record<string, unknown> = { ...row };
+          if (itemsError?.message.includes("packing_spec")) delete r.packing_spec;
+          if (itemsError?.message.includes("commercial_name")) delete r.commercial_name;
+          return r;
+        });
         const retry = await supabase.from("sales_order_items").insert(fallbackPayload);
         itemsError = retry.error;
       }

@@ -85,6 +85,7 @@ create table if not exists public.sales_order_items (
 );
 
 alter table public.sales_order_items add column if not exists commercial_name text;
+alter table public.sales_order_items add column if not exists packing_spec text;
 
 -- 5. Bảng đơn mua hàng (Purchase Orders) nếu dùng
 create table if not exists public.purchase_orders (
