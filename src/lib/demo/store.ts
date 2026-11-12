@@ -1044,6 +1044,36 @@ export function demoUpdateOrderNote(orderId: string, note: string | null): void 
   }
 }
 
+export function demoDeleteOrder(orderId: string): void {
+  const state = db();
+  const idx = state.orders.findIndex((o) => o.id === orderId);
+  if (idx !== -1) {
+    state.orders.splice(idx, 1);
+  }
+  // Xóa các stock movements liên quan nếu có
+  state.movements = state.movements.filter(
+    (m) => !(m.reference_type === "production_order" && m.reference_id === orderId),
+  );
+}
+
+export function demoUpdateProductionOrder(input: {
+  id: string;
+  productId?: string;
+  quantity?: number;
+  plannedDate?: string;
+  note?: string | null;
+}): void {
+  const state = db();
+  const order = state.orders.find((o) => o.id === input.id);
+  if (!order) throw new Error("Không tìm thấy lệnh sản xuất.");
+  if (order.status === "cho_xac_nhan") {
+    if (input.productId) order.product_id = input.productId;
+    if (input.quantity && input.quantity > 0) order.quantity = input.quantity;
+  }
+  if (input.plannedDate) order.planned_date = input.plannedDate;
+  if (input.note !== undefined) order.note = input.note ? input.note.trim() : null;
+}
+
 export function demoConfirmOrder(
   arg:
     | string

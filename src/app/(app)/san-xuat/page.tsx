@@ -8,6 +8,8 @@ import {
   PrinterIcon,
 } from "lucide-react";
 import { ConfirmOrderButton } from "@/components/forms/confirm-order-button";
+import { DeleteProductionOrderDialog } from "@/components/forms/delete-production-order-dialog";
+import { EditProductionOrderDialog } from "@/components/forms/edit-production-order-dialog";
 import { ProductionOrderDialog } from "@/components/forms/production-order-form";
 import { PageHeader } from "@/components/page-header";
 import { ProductionStatusBadge } from "@/components/status-badges";
@@ -54,6 +56,7 @@ export default async function SanXuatPage() {
   const bomProductIds = new Set(boms.map((bom) => bom.product_id));
   const pending = orders.filter((order) => order.status === "cho_xac_nhan");
   const completed = orders.filter((order) => order.status === "hoan_thanh");
+  const isAdmin = user.role === "admin";
 
   return (
     <div className="space-y-5 sm:space-y-6 max-w-full overflow-hidden">
@@ -194,6 +197,16 @@ export default async function SanXuatPage() {
                             canInputCost={CAN_ACCESS.sanXuatGiaThanh(user.role)}
                           />
                         )}
+                        {isAdmin && (
+                          <div className="flex items-center gap-1 border-l pl-1.5 ml-0.5">
+                            <EditProductionOrderDialog
+                              order={order}
+                              products={products}
+                              boms={boms}
+                            />
+                            <DeleteProductionOrderDialog order={order} />
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -287,20 +300,32 @@ export default async function SanXuatPage() {
                             </Button>
                           </TableCell>
                           <TableCell className="text-right">
-                            {order.status === "cho_xac_nhan" ? (
-                              <ConfirmOrderButton
-                                orderId={order.id}
-                                orderCode={order.code}
-                                productName={order.product_name}
-                                plannedQuantity={order.quantity}
-                                productUnit={order.product_unit}
-                                canInputCost={CAN_ACCESS.sanXuatGiaThanh(user.role)}
-                              />
-                            ) : (
-                              <span className="text-xs text-muted-foreground">
-                                Đã nhập kho
-                              </span>
-                            )}
+                            <div className="flex items-center justify-end gap-1.5">
+                              {order.status === "cho_xac_nhan" ? (
+                                <ConfirmOrderButton
+                                  orderId={order.id}
+                                  orderCode={order.code}
+                                  productName={order.product_name}
+                                  plannedQuantity={order.quantity}
+                                  productUnit={order.product_unit}
+                                  canInputCost={CAN_ACCESS.sanXuatGiaThanh(user.role)}
+                                />
+                              ) : (
+                                <span className="text-xs text-muted-foreground mr-1">
+                                  Đã nhập kho
+                                </span>
+                              )}
+                              {isAdmin && (
+                                <>
+                                  <EditProductionOrderDialog
+                                    order={order}
+                                    products={products}
+                                    boms={boms}
+                                  />
+                                  <DeleteProductionOrderDialog order={order} />
+                                </>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       );

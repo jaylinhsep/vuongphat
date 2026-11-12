@@ -8,8 +8,10 @@ import {
   demoCreateItem,
   demoCreateOrder,
   demoDeleteBom,
+  demoDeleteOrder,
   demoSaveBom,
   demoUpdateOrderNote,
+  demoUpdateProductionOrder,
 } from "@/lib/demo/store";
 import { errorState, type FormState } from "@/lib/form-state";
 import { parseNumber, todayISO } from "@/lib/format";
@@ -33,6 +35,15 @@ async function requireBomWrite() {
   if (!user) throw new Error("Phiên đăng nhập đã hết hạn.");
   if (!CAN_ACCESS.sanXuatBom(user.role)) {
     throw new Error("Bạn không có quyền thiết lập công thức (chỉ dành cho Quản trị viên).");
+  }
+  return user;
+}
+
+async function requireProductionAdmin() {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Phiên đăng nhập đã hết hạn.");
+  if (user.role !== "admin") {
+    throw new Error("Chỉ Quản trị viên (Admin) mới có quyền sửa hoặc xóa lệnh sản xuất.");
   }
   return user;
 }
@@ -353,6 +364,114 @@ export async function updateProductionOrderNoteAction(
     return {
       status: "success",
       message: "Đã cập nhật ghi chú lệnh sản xuất.",
+    };
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function updateProductionOrderAction(
+  prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await requireProductionAdmin();
+    const id = String(formData.get("id") ?? "");
+    const productId = String(formData.get("product_id") ?? "");
+    const quantity = parseNumber(formData.get("quantity"));
+    const plannedDate = String(formData.get("planned_date") ?? "") || todayISO();
+    const note = String(formData.get("note") ?? "").trim();
+
+    if (!id) return { status: "error", message: "Lệnh sản xuất không hợp lệ." };
+
+    if (!isSupabaseConfigured()) {
+      demoUpdateProductionOrder({
+        id,
+        productId: productId || undefined,
+        quantity: quantity > 0 ? quantity : undefined,
+        plannedDate,
+        note: note || null,
+      });
+    } else {
+      const admin = createSupabaseAdminClient();
+      const { data: currentOrder, error: fetchErr } = await admin
+        .from("production_orders")
+        .select("status")
+        .eq("id", id)
+        .single();
+      if (fetchErr || !currentOrder) throw new Error("Không tìm thấy lệnh sản xuất.");
+
+      const updateData: Record<string, unknown> = {
+        planned_date: plannedDate,
+        note: note || null,
+      };
+
+      if (currentOrder.status === "cho_xac_nhan") {
+        if (!productId) return { status: "error", message: "Vui lòng chọn thành phẩm." };
+        if (!Number.isFinite(quantity) || quantity <= 0) {
+          return { status: "error", message: "Số lượng phải lớn hơn 0." };
+        }
+        updateData.product_id = productId;
+        updateData.quantity = quantity;
+      }
+
+      const { error: updateErr } = await admin
+        .from("production_orders")
+        .update(updateData)
+        .eq("id", id);
+      if (updateErr) throw new Error(updateErr.message);
+    }
+
+    refreshSanXuat();
+    return {
+      status: "success",
+      message: "Đã cập nhật lệnh sản xuất thành công.",
+    };
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function deleteProductionOrderAction(
+  prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await requireProductionAdmin();
+    const orderId = String(formData.get("id") ?? "");
+    const confirmText = String(formData.get("confirm_text") ?? "").trim().toLowerCase();
+
+    if (!orderId) {
+      return { status: "error", message: "Lệnh sản xuất không hợp lệ." };
+    }
+    if (confirmText !== "ok") {
+      return { status: "error", message: "Vui lòng gõ 'ok' để xác nhận xóa." };
+    }
+
+    if (!isSupabaseConfigured()) {
+      demoDeleteOrder(orderId);
+    } else {
+      const admin = createSupabaseAdminClient();
+      // Xóa các giao dịch xuất nhập kho liên quan nếu lệnh đã hoàn thành
+      const { error: smError } = await admin
+        .from("stock_movements")
+        .delete()
+        .eq("reference_type", "production_order")
+        .eq("reference_id", orderId);
+      if (smError) throw new Error(smError.message);
+
+      // Xóa lệnh sản xuất
+      const { error: orderError } = await admin
+        .from("production_orders")
+        .delete()
+        .eq("id", orderId);
+      if (orderError) throw new Error(orderError.message);
+    }
+
+    refreshSanXuat();
+    return {
+      status: "success",
+      message: "Đã xóa lệnh sản xuất thành công.",
     };
   } catch (error) {
     return errorState(error);
